@@ -51,14 +51,23 @@ bool Kran::opened()
    return start_work_time > 0;
 }
 
-
 unsigned long Kran::get_duration()
 {
     //unsigned long d = analogRead(A0); // 0 - 1023
     //d *= 1000;   // 0 - 1023 seconds
-    return 5000;
+    return duration;
 }
 
+unsigned long Kran::poliv_left_sec()
+{
+   return (duration - (millis() + start_work_time))/ 1000;
+}
+
+void Kran::set_duration(unsigned long d)
+{ 
+	duration = d; 
+}
+ 
 void Kran::open_kran()
 {
     start_open_time = millis();

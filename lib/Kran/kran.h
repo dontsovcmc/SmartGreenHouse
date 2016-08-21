@@ -11,9 +11,9 @@ public:
     void poll();
     
     bool opened();
-    
+    unsigned long poliv_left_sec();
     unsigned long get_duration();
-    
+    void set_duration(unsigned long d);
     void open_kran();
     void open_kran_stop();
     void close_kran();
@@ -32,6 +32,7 @@ private:
     int close_pin;
     int led_kran;
     unsigned long open_time_msec;
+	unsigned long duration;
 };
 
 #endif
