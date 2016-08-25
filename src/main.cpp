@@ -1,6 +1,5 @@
 #include "Arduino.h"
 #include "kran.h"
-#include "OneButton.h"
 #include "wire.h"
 #include <LiquidCrystal_I2C.h>
 #include <menu.h>//menu macros and objects
@@ -8,7 +7,6 @@
 #include <menuFields.h>
 #include <keyStream.h>//keyboard driver and fake stream (for the encoder button)
 #include <chainStream.h>// concatenate multiple input streams (this allows adding a button to the encoder)
-
 
 
 #define BUTTON_1 4   
@@ -31,8 +29,6 @@ unsigned long blink_time = 0;
 bool blink_on = false;
 
 Kran kran(OPEN_PIN, CLOSE_PIN, LED_KRAN, OPEN_TIME_MSEC);
-OneButton button1(BUTTON_1, false);
-//OneButton button2(BUTTON_2, false);
 
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I2C address
 menuLCD menu_lcd(lcd,16,2);//menu output device
@@ -100,8 +96,6 @@ void blink() //LED_WORK
     }
 }
 
-
-
 void start_menu()
 {
 	poll_menu = true;
@@ -110,7 +104,7 @@ void start_menu()
 bool start_screen()
 {
 	poll_menu = false;
-    button1.attachClick(turn_kran);
+    //button1.attachClick(turn_kran);
   
 	lcd.setCursor(0,0); 
     lcd.print("HELLO!");
@@ -169,20 +163,26 @@ void loop()
 	kran.poll();
 	if (poll_menu)
 	{
+        Serial.println("poll menu");
 		mainMenu.poll(menu_lcd,allIn);
 	}
-	else 
+	else if (allIn.available()) 
 	{
-		button1.tick();
-		
-		if (allIn.read() == menu::enterCode) 
+		//button1.tick();
+        char ch = allIn.read();
+		if (ch == menu::enterCode) 
 		{
 			poll_menu = true;
-			mainMenu.sel = 0; // reset the menu index fornext call
+			mainMenu.sel = 1; //0 reset the menu index fornext call
 			Serial.println("open menu");
 
 		}
-		
+		if (ch == menu::upCode) 
+		{
+			Serial.println("turn_kran");
+			turn_kran();
+		}
+        
 		if (kran.opened())
 		{
 			int left = 	kran.poliv_left_sec();
@@ -198,6 +198,7 @@ void loop()
 		}
 		else
 		{
+            Serial.println("no buttons");
 			start_screen();
 		}
 		
