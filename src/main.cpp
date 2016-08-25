@@ -175,35 +175,35 @@ void loop()
 			poll_menu = true;
 			mainMenu.sel = 1; //0 reset the menu index fornext call
 			Serial.println("open menu");
-
 		}
-		if (ch == menu::upCode) 
+        else if (ch == menu::upCode) 
 		{
 			Serial.println("turn_kran");
 			turn_kran();
 		}
-        
-		if (kran.opened())
-		{
-			int left = 	kran.poliv_left_sec();
-			lcd.setCursor(0,0); 
-			lcd.print("LEFT: ");
-			lcd.setCursor(6,0); 
-			lcd.print(left);
-			lcd.setCursor(0,1); 
-			lcd.print("[STOP]   [MENU]");
-			   
-			Serial.print("poliv left: ");
-			Serial.println(left);
-		}
-		else
-		{
+    }
+    else 
+    {
+    
+        if (kran.opened())
+        {
+            int left = 	kran.poliv_left_sec();
+            lcd.setCursor(0,0); 
+            lcd.print("LEFT: ");
+            lcd.setCursor(6,0); 
+            lcd.print(left);
+            lcd.setCursor(0,1); 
+            lcd.print("[STOP]   [MENU]");
+               
+            Serial.print("poliv left: ");
+            Serial.println(left);
+        }
+        else
+        {
             Serial.println("no buttons");
-			start_screen();
-		}
+            start_screen();
+        }
 		
-		
-	//button2.tick();
 	}				
   
 	blink();
