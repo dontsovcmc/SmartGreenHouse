@@ -32,7 +32,7 @@ private:
     int close_pin;
     int led_kran;
     unsigned long open_time_msec;
-	unsigned long duration;
+	unsigned long duration;   //msec
 };
 
 #endif

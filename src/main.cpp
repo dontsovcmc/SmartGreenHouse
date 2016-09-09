@@ -1,11 +1,12 @@
 #include "Arduino.h"
+#include "stdlib.h"
 #include "kran.h"
 #include "wire.h"
 #include <LiquidCrystal_I2C.h>
 #include <menu.h>//menu macros and objects
 #include <menuLCDs.h>//F. Malpartida LCD's
 #include <menuFields.h>
-#include <keyStream.h>//keyboard driver and fake stream (for the encoder button)
+#include <keySafeStream.h>
 #include <chainStream.h>// concatenate multiple input streams (this allows adding a button to the encoder)
 
 
@@ -14,11 +15,9 @@
 
 #define OPEN_PIN 6   //Открытие крана
 #define CLOSE_PIN 7  //Закрытие крана
-#define OPEN_TIME_MSEC 3000  //Время нужное для открытия/закрытия крана
+#define OPEN_TIME_MSEC 1000  //Время нужное для открытия/закрытия крана
 #define LED_KRAN  3      //Горит - движется кран
 #define BUTTON_START BUTTON_1   //Начать полив (открыть на N сек), закрыть кран
-
-#define RESISTOR_PIN A0  //Длительность открытия
 
 #define LED_WORK  2      //Моргает - отдых, горит - полив
 
@@ -35,17 +34,17 @@ menuLCD menu_lcd(lcd,16,2);//menu output device
 
 //a keyboard with only one key :D, this is the encoder button
 keyMap encBtn_map[]={{BUTTON_1,menu::upCode}, {BUTTON_2,menu::enterCode}};//negative pin numbers means we have a pull-up, this is on when low
-keyLook<2> encButton(encBtn_map);
+keySafeLook<2> encButton(encBtn_map);
 Stream* in3[]={&encButton,&Serial};
 chainStream<2> allIn(in3);
 
 bool poll_menu = false;
 
-bool poliv_enable = 1;
+bool poliv_enable = true;
 int poliv_run_hour = 0;
 int poliv_run_min = 0;
 int poliv_period = 24;
-int poliv_duration = 1;
+int poliv_duration = 3;
 
 void turn_kran()
 {
@@ -101,16 +100,38 @@ void start_menu()
 	poll_menu = true;
     Serial.println("start_menu");
 }
+
+void print_screen(const char *message, const char *button1, const char *button2)
+{
+    lcd.setCursor(0,0); 
+    (message) ? lcd.print(message) : lcd.print("                ");
+	lcd.setCursor(0,1); 
+    if (button1)
+    {
+        lcd.print("[");
+        lcd.print(button1);
+        lcd.print("]");
+    }
+    
+    for (unsigned int i = 0; i < 16 - strlen(button1) - strlen(button2) - 4; i++)
+        lcd.print(" ");        
+    
+    if (button2)
+    {
+        lcd.print("[");
+        lcd.print(button2);
+        lcd.print("]");
+    }
+}
+
 bool start_screen()
 {
 	poll_menu = false;
     //button1.attachClick(turn_kran);
-  
-	lcd.setCursor(0,0); 
-    lcd.print("HELLO!");
-	lcd.setCursor(0,1); 
-    lcd.print("[POLIV]   [MENU]");
-     
+    update_duration();
+    
+    print_screen("Hello!", "POLIV", "MENU");
+    
 	Serial.println("start_screen");
 	
 	return true;
@@ -128,10 +149,10 @@ TOGGLE(poliv_enable,poliv,"POLIV: ",
 
 MENU(mainMenu,"Main"
   , SUBMENU(poliv)
-  , FIELD(poliv_period,"PERIOD","h",8,96,8,1)
-  , FIELD(poliv_duration,"DLIT","min",1,60,5,1)
-  , FIELD(poliv_run_hour,"Start","hour",0,23,1,1)
-  , FIELD(poliv_run_min,"Start","min",0,59,10,1)
+  , FIELD(poliv_period,"PERIOD","h", 8, 96, 8, 1)
+  , FIELD(poliv_duration,"DLIT","sec", 1, 60, 5, 1)
+  , FIELD(poliv_run_hour,"Start","hour", 0, 23, 1, 1)
+  , FIELD(poliv_run_min,"Start","min", 0, 59, 10, 1)
   , OP("Exit", start_screen)
 );
 
@@ -139,8 +160,6 @@ void setup()
 {
   //int sensorValue = analogRead(RESISTOR_PIN);  //int (0 to 1023)
   kran.setup();
-  update_duration();
-  //encButton.begin();
   
   pinMode(LED_WORK, OUTPUT);
   digitalWrite(LED_WORK, LOW);
@@ -173,7 +192,7 @@ void loop()
 		if (ch == menu::enterCode) 
 		{
 			poll_menu = true;
-			mainMenu.sel = 1; //0 reset the menu index fornext call
+			mainMenu.sel = 0; //0 reset the menu index fornext call
 			Serial.println("open menu");
 		}
         else if (ch == menu::upCode) 
@@ -184,16 +203,14 @@ void loop()
     }
     else 
     {
-    
         if (kran.opened())
         {
             int left = 	kran.poliv_left_sec();
-            lcd.setCursor(0,0); 
-            lcd.print("LEFT: ");
-            lcd.setCursor(6,0); 
-            lcd.print(left);
-            lcd.setCursor(0,1); 
-            lcd.print("[STOP]   [MENU]");
+            char buffer[] = "POLIV: -      ";
+            
+            itoa(left,&buffer[7],10); //(integer, yourBuffer, base)
+            
+            print_screen(buffer, "STOP", nullptr);
                
             Serial.print("poliv left: ");
             Serial.println(left);
