@@ -9,6 +9,8 @@
 #include <keySafeStream.h>
 #include <chainStream.h>// concatenate multiple input streams (this allows adding a button to the encoder)
 
+#include "settings.h"
+#include "sgh_time.h"
 
 #define BUTTON_1 4   
 #define BUTTON_2 5   
@@ -24,6 +26,7 @@
 #define BLINK_DELAY   2000   //Период моргания
 #define BLINK_TIME    100   //Период моргания
 
+
 unsigned long blink_time = 0;
 bool blink_on = false;
 
@@ -31,6 +34,9 @@ Kran kran(OPEN_PIN, CLOSE_PIN, LED_KRAN, OPEN_TIME_MSEC);
 
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I2C address
 menuLCD menu_lcd(lcd,16,2);//menu output device
+
+RTC_DS1307 rtc;  //часы реального времени
+
 
 //a keyboard with only one key :D, this is the encoder button
 keyMap encBtn_map[]={{BUTTON_1,menu::upCode}, {BUTTON_2,menu::enterCode}};//negative pin numbers means we have a pull-up, this is on when low
@@ -40,11 +46,6 @@ chainStream<2> allIn(in3);
 
 bool poll_menu = false;
 
-bool poliv_enable = true;
-int poliv_run_hour = 0;
-int poliv_run_min = 0;
-int poliv_period = 24;
-int poliv_duration = 3;
 
 void turn_kran()
 {
@@ -64,7 +65,7 @@ void turn_kran()
 
 void update_duration()
 {
-   kran.set_duration(poliv_duration*1000);
+   kran.set_duration(settings.poliv_duration*1000);
 }
 
 void blink() //LED_WORK
@@ -130,35 +131,41 @@ bool start_screen()
     //button1.attachClick(turn_kran);
     update_duration();
     
-    print_screen("Hello!", "POLIV", "MENU");
+	char buffer[32];
+	get_time_str(&rtc, &buffer[0], 16);
+	print_screen(buffer, "POLIV", "MENU");
+    //print_screen("Hello!", "POLIV", "MENU");
     
 	Serial.println("start_screen");
 	
 	return true;
 }
 
-void reset_settings()
+bool close_settings_menu()
 {
-
+	save_settings();
+	start_screen();
 }
 
-TOGGLE(poliv_enable,poliv,"POLIV: ",
+TOGGLE(settings.poliv_enable,poliv,"POLIV: ",
   VALUE("YES",1),
   VALUE("NO",0)
 );
 
 MENU(mainMenu,"Main"
   , SUBMENU(poliv)
-  , FIELD(poliv_period,"PERIOD","h", 8, 96, 8, 1)
-  , FIELD(poliv_duration,"DLIT","sec", 1, 60, 5, 1)
-  , FIELD(poliv_run_hour,"Start","hour", 0, 23, 1, 1)
-  , FIELD(poliv_run_min,"Start","min", 0, 59, 10, 1)
-  , OP("Exit", start_screen)
+  , FIELD(settings.poliv_period,"PERIOD","h", 8, 96, 8, 1)
+  , FIELD(settings.poliv_duration,"DLIT","sec", 1, 60, 5, 1)
+  , FIELD(settings.poliv_run_hour,"Start","hour", 0, 23, 1, 1)
+  , FIELD(settings.poliv_run_min,"Start","min", 0, 59, 10, 1)
+  , OP("Exit", close_settings_menu)
 );
 
 void setup()
 {
   //int sensorValue = analogRead(RESISTOR_PIN);  //int (0 to 1023)
+  
+  
   kran.setup();
   
   pinMode(LED_WORK, OUTPUT);
@@ -171,8 +178,44 @@ void setup()
   
   lcd.begin(16,2);  
   Serial.begin(9600) ;
-    
-  //button2.attachClick(start_menu);
+   
+  // ============ SETTINGS ================= 
+  
+  if (load_settings())
+  {
+	print_screen("SETT. LOADED 1", nullptr, nullptr);
+	delay(1500);
+  }
+  else
+  {
+	print_screen("SETT. ERROR", nullptr, nullptr);
+	delay(1500);
+  }
+  lcd.clear();
+  
+  // ============ CLOCK ================= 
+  
+  if (!rtc.begin()) {
+	print_screen("Clock not found", nullptr, nullptr);
+    while (1);
+  }
+  
+  if (!rtc.isrunning()) {
+    print_screen("RTC is NOT running!", nullptr, nullptr);
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // following line sets the RTC to the date & time this sketch was compiled
+    // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0)); // January 21, 2014 at 3am you would call:
+	delay(1500);
+	lcd.clear();
+  }
+  else
+  {
+	char buffer[32];
+	get_time_str(&rtc, &buffer[0], 16);
+	print_screen(buffer, nullptr, nullptr);
+	delay(1500);
+	lcd.clear();
+  }
+  
   start_screen();
 }
 
