@@ -2,14 +2,42 @@
 #ifndef SGH_TIME_H
 #define SGH_TIME_H
 
-#include <stdio.h>
+#include "OneButton.h"
 #include <Wire.h>
-#include "RTClib.h"
+#include <TimeLib.h>
+#include <DS1307RTC.h>
 
-void get_time_str(RTC_DS1307 *rtc, char *buf, const int len)
+void get_time_str(char *buf, const int len)
 {
-	DateTime now = rtc->now();
-    sprintf (buf, "%d/%d/%d %d:%d", now.year(), now.month(), now.day(), now.hour(), now.minute());
+	tmElements_t tm;
+	if (RTC.read(tm)) {
+		sprintf (buf, "%2d/%2d/%2d %2d:%2d", tmYearToCalendar(tm.Year), tm.Month, tm.Day, tm.Hour, tm.Minute);
+	}
 }
+
+bool getTime(tmElements_t *tm, const char *str)
+{
+  int Hour, Min, Sec;
+
+  if (sscanf(str, "%d:%d:%d", &Hour, &Min, &Sec) != 3) return false;
+  tm->Hour = Hour;
+  tm->Minute = Min;
+  tm->Second = Sec;
+  return true;
+}
+
+bool getDate(tmElements_t *tm, const char *str)
+{
+  char Month[12];
+  int Day, Year;
+  uint8_t monthIndex;
+
+  if (sscanf(str, "%s %d %d", Month, &Day, &Year) != 3) return false;
+  tm->Day = Day;
+  tm->Month = monthIndex + 1;
+  tm->Year = CalendarYrToTm(Year);
+  return true;
+}
+
 
 #endif

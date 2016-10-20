@@ -35,8 +35,7 @@ Kran kran(OPEN_PIN, CLOSE_PIN, LED_KRAN, OPEN_TIME_MSEC);
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I2C address
 menuLCD menu_lcd(lcd,16,2);//menu output device
 
-RTC_DS1307 rtc;  //часы реального времени
-
+tmElements_t tm;
 
 //a keyboard with only one key :D, this is the encoder button
 keyMap encBtn_map[]={{BUTTON_1,menu::upCode}, {BUTTON_2,menu::enterCode}};//negative pin numbers means we have a pull-up, this is on when low
@@ -132,7 +131,7 @@ bool start_screen()
     update_duration();
     
 	char buffer[32];
-	get_time_str(&rtc, &buffer[0], 16);
+	get_time_str(&buffer[0], 16);
 	print_screen(buffer, "POLIV", "MENU");
     //print_screen("Hello!", "POLIV", "MENU");
     
@@ -163,60 +162,79 @@ MENU(mainMenu,"Main"
 
 void setup()
 {
-  //int sensorValue = analogRead(RESISTOR_PIN);  //int (0 to 1023)
-  
-  
-  kran.setup();
-  
-  pinMode(LED_WORK, OUTPUT);
-  digitalWrite(LED_WORK, LOW);
-  
-  pinMode(BUTTON_1,INPUT);
-  digitalWrite(BUTTON_1,LOW);
-  pinMode(BUTTON_2,INPUT); 
-  digitalWrite(BUTTON_2,LOW);
-  
-  lcd.begin(16,2);  
-  Serial.begin(9600) ;
-   
-  // ============ SETTINGS ================= 
-  
-  if (load_settings())
-  {
-	print_screen("SETT. LOADED 1", nullptr, nullptr);
-	delay(1500);
-  }
-  else
-  {
-	print_screen("SETT. ERROR", nullptr, nullptr);
-	delay(1500);
-  }
-  lcd.clear();
-  
-  // ============ CLOCK ================= 
-  
-  if (!rtc.begin()) {
-	print_screen("Clock not found", nullptr, nullptr);
-    while (1);
-  }
-  
-  if (!rtc.isrunning()) {
-    print_screen("RTC is NOT running!", nullptr, nullptr);
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // following line sets the RTC to the date & time this sketch was compiled
-    // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0)); // January 21, 2014 at 3am you would call:
-	delay(1500);
+	//int sensorValue = analogRead(RESISTOR_PIN);  //int (0 to 1023)
+
+	kran.setup();
+
+	pinMode(LED_WORK, OUTPUT);
+	digitalWrite(LED_WORK, LOW);
+
+	pinMode(BUTTON_1,INPUT);
+	digitalWrite(BUTTON_1,LOW);
+	pinMode(BUTTON_2,INPUT); 
+	digitalWrite(BUTTON_2,LOW);
+
+	lcd.begin(16,2);  
+	Serial.begin(9600) ;
+
+	// ============ SETTINGS ================= 
+
+	if (load_settings())
+	{
+		print_screen("SETT. LOADED 1", nullptr, nullptr);
+		delay(1500);
+	}
+	else
+	{
+		print_screen("SETT. ERROR", nullptr, nullptr);
+		delay(1500);
+	}
 	lcd.clear();
-  }
-  else
-  {
-	char buffer[32];
-	get_time_str(&rtc, &buffer[0], 16);
-	print_screen(buffer, nullptr, nullptr);
-	delay(1500);
-	lcd.clear();
-  }
+
+	// ============ CLOCK ================= 
   
-  start_screen();
+	bool parse = false;
+	bool config = false;
+	if (!RTC.isRunning()) 
+	{
+		if (getDate(&tm, __DATE__) && getTime(&tm, __TIME__)) 
+		{
+			parse = true;
+			// and configure the RTC with this info
+			if (RTC.write(tm)) {
+				config = true;
+			}
+		}
+		
+		if (parse && config) 
+		{
+			print_screen("DS1307 configured", nullptr, nullptr);
+			delay(1500);
+			lcd.clear();
+		} 
+		else if (parse) 
+		{
+			print_screen("DS1307 Error", nullptr, nullptr);
+			delay(1500);
+			lcd.clear();
+		} 
+		else 
+		{
+			print_screen("No PC time", nullptr, nullptr);
+			delay(1500);
+			lcd.clear();
+		}
+	}
+	else
+	{
+		char buffer[32];
+		get_time_str(&buffer[0], 16);
+		print_screen(buffer, nullptr, nullptr);
+		delay(1500);
+		lcd.clear();
+	}
+
+	start_screen();
 }
 
 // the loop routine runs over and over again forever:
