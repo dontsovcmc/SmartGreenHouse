@@ -206,7 +206,7 @@ void loop()
         if (kran.opened())
         {
             int left = 	kran.poliv_left_sec();
-            char buffer[] = "POLIV: -      ";
+            char buffer[] = "POLIV:         ";
             
             itoa(left,&buffer[7],10); //(integer, yourBuffer, base)
             
