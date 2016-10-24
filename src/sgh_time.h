@@ -11,7 +11,16 @@ void get_time_str(char *buf, const int len)
 {
 	tmElements_t tm;
 	if (RTC.read(tm)) {
-		sprintf (buf, "%2d/%2d/%2d %2d:%2d", tmYearToCalendar(tm.Year), tm.Month, tm.Day, tm.Hour, tm.Minute);
+		sprintf (buf, "%02d/%02d/%02d %02d:%02d", tmYearToCalendar(tm.Year), tm.Month, tm.Day, tm.Hour, tm.Minute);
+	}
+}
+
+void setup_internal_time()
+{
+	tmElements_t tm;
+	if (RTC.read(tm)) 
+	{
+		setTime(tm.Hour, tm.Minute, 0, tm.Day, tm.Month, tmYearToY2k(tm.Year)); 
 	}
 }
 

@@ -9,6 +9,11 @@
 #include <keySafeStream.h>
 #include <chainStream.h>// concatenate multiple input streams (this allows adding a button to the encoder)
 
+#include <TimeAlarms.h>
+
+char poliv_alarm_id = -1;
+char relay1_alarm_id = -1;
+
 #include "settings.h"
 #include "sgh_time.h"
 
@@ -17,6 +22,10 @@
 
 #define OPEN_PIN 6   //Открытие крана
 #define CLOSE_PIN 7  //Закрытие крана
+
+#define RELAY1_PIN 8 //Реле 1
+#define RELAY2_PIN 9 //Реле 2
+
 #define OPEN_TIME_MSEC 1000  //Время нужное для открытия/закрытия крана
 #define LED_KRAN  3      //Горит - движется кран
 #define BUTTON_START BUTTON_1   //Начать полив (открыть на N сек), закрыть кран
@@ -44,10 +53,15 @@ Stream* in3[]={&encButton,&Serial};
 chainStream<2> allIn(in3);
 
 bool poll_menu = false;
+bool relay1 = false;
+
+void log(const char *str) { Serial.print(str); }
+void logln(const char *str) { Serial.println(str); }
 
 
 void turn_kran()
 {
+	logln("turn_kran");
     if (kran.opened())
     {
        lcd.setCursor(0,0); 
@@ -66,6 +80,22 @@ void update_duration()
 {
    kran.set_duration(settings.poliv_duration*1000);
 }
+
+void turn_off_fan()
+{
+	logln("FAN OFF");
+	digitalWrite(RELAY1_PIN, LOW);	
+	relay1 = false;
+}
+
+void turn_on_fan()
+{
+	logln("FAN ON");
+    Alarm.timerOnce(settings.fan_duration, turn_off_fan); 
+	digitalWrite(RELAY1_PIN, HIGH);
+	relay1 = true;
+}
+
 
 void blink() //LED_WORK
 {
@@ -98,7 +128,7 @@ void blink() //LED_WORK
 void start_menu()
 {
 	poll_menu = true;
-    Serial.println("start_menu");
+    logln("start_menu");
 }
 
 void print_screen(const char *message, const char *button1, const char *button2)
@@ -124,75 +154,32 @@ void print_screen(const char *message, const char *button1, const char *button2)
     }
 }
 
-bool start_screen()
+void screen_info(const char *buffer, int delay)
 {
-	poll_menu = false;
-    //button1.attachClick(turn_kran);
-    update_duration();
-    
-	char buffer[32];
-	get_time_str(&buffer[0], 16);
-	print_screen(buffer, "POLIV", "MENU");
-    //print_screen("Hello!", "POLIV", "MENU");
-    
-	Serial.println("start_screen");
-	
-	return true;
+	print_screen(buffer, nullptr, nullptr);
+	Alarm.delay(delay);
+	lcd.clear();		
 }
 
-bool close_settings_menu()
+void setup_settings()
 {
-	save_settings();
-	start_screen();
-}
-
-TOGGLE(settings.poliv_enable,poliv,"POLIV: ",
-  VALUE("YES",1),
-  VALUE("NO",0)
-);
-
-MENU(mainMenu,"Main"
-  , SUBMENU(poliv)
-  , FIELD(settings.poliv_period,"PERIOD","h", 8, 96, 8, 1)
-  , FIELD(settings.poliv_duration,"DLIT","sec", 1, 60, 5, 1)
-  , FIELD(settings.poliv_run_hour,"Start","hour", 0, 23, 1, 1)
-  , FIELD(settings.poliv_run_min,"Start","min", 0, 59, 10, 1)
-  , OP("Exit", close_settings_menu)
-);
-
-void setup()
-{
-	//int sensorValue = analogRead(RESISTOR_PIN);  //int (0 to 1023)
-
-	kran.setup();
-
-	pinMode(LED_WORK, OUTPUT);
-	digitalWrite(LED_WORK, LOW);
-
-	pinMode(BUTTON_1,INPUT);
-	digitalWrite(BUTTON_1,LOW);
-	pinMode(BUTTON_2,INPUT); 
-	digitalWrite(BUTTON_2,LOW);
-
-	lcd.begin(16,2);  
-	Serial.begin(9600) ;
-
-	// ============ SETTINGS ================= 
-
-	if (load_settings())
+	char ver = load_settings();
+	if (ver > 0)
 	{
-		print_screen("SETT. LOADED 1", nullptr, nullptr);
-		delay(1500);
+		char ver_str[] = "SETT. LOADED   ";
+		itoa(ver,&ver_str[13],10); //(integer, yourBuffer, base
+		screen_info(ver_str, 1500);
 	}
 	else
 	{
-		print_screen("SETT. ERROR", nullptr, nullptr);
-		delay(1500);
+		screen_info("SETT. ERROR", 1500);
 	}
 	lcd.clear();
+}
 
-	// ============ CLOCK ================= 
-  
+
+void load_time()
+{
 	bool parse = false;
 	bool config = false;
 	if (!RTC.isRunning()) 
@@ -207,33 +194,159 @@ void setup()
 		}
 		
 		if (parse && config) 
-		{
-			print_screen("DS1307 configured", nullptr, nullptr);
-			delay(1500);
-			lcd.clear();
-		} 
+			screen_info("DS1307 configured", 1500);
 		else if (parse) 
-		{
-			print_screen("DS1307 Error", nullptr, nullptr);
-			delay(1500);
-			lcd.clear();
-		} 
+			screen_info("DS1307 Error", 1500);
 		else 
-		{
-			print_screen("No PC time", nullptr, nullptr);
-			delay(1500);
-			lcd.clear();
-		}
+			screen_info("No PC time", 1500);
 	}
 	else
 	{
 		char buffer[32];
 		get_time_str(&buffer[0], 16);
-		print_screen(buffer, nullptr, nullptr);
-		delay(1500);
-		lcd.clear();
+		screen_info(buffer, 1500);
 	}
+}
 
+
+void setup_alarms()
+{
+	if (settings.poliv_enable)
+	{
+		if (poliv_alarm_id == -1)
+			poliv_alarm_id = Alarm.alarmRepeat(settings.poliv_run_hour, settings.poliv_run_min, 0, turn_kran);   // every day		
+		else
+			Alarm.write(poliv_alarm_id, AlarmHMS(settings.poliv_run_hour, settings.poliv_run_min, 0));
+		
+		char buf[16];
+		sprintf (buf, "POLIV: %02d:%02d", settings.poliv_run_hour, settings.poliv_run_min);
+		screen_info(buf, 1500);
+	}
+	if (settings.fan_enable)
+	{
+		if (relay1_alarm_id == -1)
+			relay1_alarm_id = Alarm.alarmRepeat(settings.fan_run_hour, settings.fan_run_min, 0, turn_on_fan); // every day	
+		else
+			Alarm.write(relay1_alarm_id, AlarmHMS(settings.fan_run_hour, settings.fan_run_min, 0));
+		
+		char buf[16];
+		sprintf (buf, "RELAY1: %02d:%02d", settings.fan_run_hour, settings.fan_run_min);
+		screen_info(buf, 1500);
+	}
+}
+	
+
+bool start_screen()
+{
+	char buffer[32];
+	
+	poll_menu = false;
+    update_duration();
+	
+	if (second() / 2 % 2)
+	{
+		get_time_str(&buffer[0], 16);	
+	}
+	else
+	{
+		float t = 1.1;
+		char t_s[6];
+		dtostrf(t, 4, 1, t_s);
+		sprintf (&buffer[0], "T = %s C          ");
+	}
+	
+	print_screen(buffer, "POLIV", "MENU");
+    
+	logln("start_screen");
+	
+	return true;
+}
+
+bool reset_settings()
+{
+	init_settings();
+	save_settings();
+	
+	setup_alarms();
+	return false;
+}
+
+bool close_settings_menu()
+{
+	save_settings();
+	
+	screen_info("Settings saved", 1500);
+	
+	start_screen();
+}
+
+promptFeedback quit() {
+  return true;
+}
+
+TOGGLE(settings.poliv_enable,poliv_on_menu,"WORK: ",
+  VALUE("YES",1),
+  VALUE("NO",0)
+);
+MENU(poliv_menu,"POLIV"
+  , SUBMENU(poliv_on_menu)
+  , FIELD(settings.poliv_duration,"DLIT","sec", 1, 60, 5, 1)
+  , FIELD(settings.poliv_run_hour,"Start","hour", 0, 23, 1, 1)
+  , FIELD(settings.poliv_run_min,"Start","min", 0, 59, 10, 1)
+  , OP("Exit", quit)
+);
+
+TOGGLE(settings.fan_enable,fan_on_menu,"WORK: ",
+  VALUE("YES",1),
+  VALUE("NO",0)
+);
+
+MENU(fan_menu,"FAN"
+  , SUBMENU(fan_on_menu)
+  , FIELD(settings.fan_duration,"DLIT","sec", 1, 60, 5, 1)
+  , FIELD(settings.fan_run_hour,"Start","hour", 0, 23, 1, 1)
+  , FIELD(settings.fan_run_min,"Start","min", 0, 59, 10, 1)
+  , OP("Exit", quit)
+);
+
+
+MENU(mainMenu,"Main"
+  , SUBMENU(poliv_menu)
+  , SUBMENU(fan_menu)
+  , OP("Reset", reset_settings)
+  , OP("Exit", close_settings_menu)
+);
+
+
+void setup()
+{
+	kran.setup();
+
+	pinMode(LED_WORK, OUTPUT);
+	pinMode(BUTTON_1,INPUT);
+	pinMode(BUTTON_2,INPUT); 
+	pinMode(RELAY1_PIN, OUTPUT); 
+	pinMode(RELAY2_PIN, OUTPUT); 
+	
+	digitalWrite(LED_WORK, LOW);
+	
+	digitalWrite(BUTTON_1,LOW);
+	digitalWrite(BUTTON_2,LOW);
+	
+	digitalWrite(RELAY1_PIN,LOW);	
+	digitalWrite(RELAY2_PIN,LOW);
+	
+	lcd.begin(16,2);  
+	Serial.begin(9600) ;
+
+	setup_settings();
+	
+	load_time();
+	
+	setup_internal_time();
+	
+	setup_alarms();
+	
 	start_screen();
 }
 
@@ -243,7 +356,7 @@ void loop()
 	kran.poll();
 	if (poll_menu)
 	{
-        Serial.println("poll menu");
+        logln("poll menu");
 		mainMenu.poll(menu_lcd,allIn);
 	}
 	else if (allIn.available()) 
@@ -254,11 +367,10 @@ void loop()
 		{
 			poll_menu = true;
 			mainMenu.sel = 0; //0 reset the menu index fornext call
-			Serial.println("open menu");
+			logln("open menu");
 		}
         else if (ch == menu::upCode) 
 		{
-			Serial.println("turn_kran");
 			turn_kran();
 		}
     }
@@ -270,20 +382,19 @@ void loop()
             char buffer[] = "POLIV:         ";
             
             itoa(left,&buffer[7],10); //(integer, yourBuffer, base)
-            
+			
             print_screen(buffer, "STOP", nullptr);
                
-            Serial.print("poliv left: ");
-            Serial.println(left);
+            log(buffer);
         }
         else
         {
-            Serial.println("no buttons");
+            logln("no buttons");
             start_screen();
         }
 		
 	}				
   
 	blink();
-	delay(1);        // delay in between reads for stability
+	Alarm.delay(1);        // delay in between reads for stability
 }
