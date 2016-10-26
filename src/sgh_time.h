@@ -10,10 +10,16 @@
 void get_rtc_time_str(char *buf, const int len)
 {
 	tmElements_t tm;
-	if (RTC.read(tm)) {
+	if (RTC.read(tm))
 		//snprintf (buf, len, "%02d/%02d/%02d %02d:%02d", tmYearToCalendar(tm.Year), tm.Month, tm.Day, tm.Hour, tm.Minute);
-		snprintf (buf, len, "%02d:%02d:%02d      ", tm.Hour, tm.Minute, tm.Second);
-	}
+		snprintf (buf, len, "%02d:%02d:%02d", tm.Hour, tm.Minute, tm.Second);
+}
+
+void get_rtc_date_str(char *buf, const int len)
+{
+	tmElements_t tm;
+	if (RTC.read(tm))
+		snprintf (buf, len, "%02d/%02d/%02d", tmYearToCalendar(tm.Year), tm.Month, tm.Day);
 }
 
 void get_time_str(char *buf, const int len)
@@ -25,9 +31,7 @@ void set_time()
 {
 	tmElements_t tm;
 	if (RTC.read(tm)) 
-	{
-		setTime(tm.Hour, tm.Minute, 0, tm.Day, tm.Month, tmYearToY2k(tm.Year)); 
-	}
+		setTime(tm.Hour, tm.Minute, tm.Second, tm.Day, tm.Month, tmYearToCalendar(tm.Year)); 
 }
 
 bool getTime(tmElements_t *tm, const char *str)

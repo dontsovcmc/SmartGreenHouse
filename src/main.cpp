@@ -41,32 +41,43 @@ extern "C" {
   typedef void (*alarmFunction)(void);
 }
 
+void print_message(char *buf)
+{
+	Serial.println(buf);
+	
+	char *line2 = strchr(buf, '\n');
+	if (line2) *line2 = '\0';
+	
+	lcd.setCursor(0, 0); 
+	lcd.print(buf);
+	for (unsigned int i = 0; i < 16 - strlen(buf); i++) 
+		lcd.print(" "); 
+	
+	if (line2) 
+	{ 
+		lcd.setCursor(0, 1);
+		lcd.print(++line2);
+		for (unsigned int i = 0; i < 16 - strlen(line2); i++) 
+			lcd.print(" "); 
+	}
+}
 
 void print_screen(const char *message, const char *button1, const char *button2)
 {
-    lcd.setCursor(0,0); 
-    (message) ? lcd.print(message) : lcd.print("                ");
-	lcd.setCursor(0,1); 
-    if (button1)
-    {
-        lcd.print("[");
-        lcd.print(button1);
-        lcd.print("]");
-    }
-    
-    for (unsigned int i = 0; i < 16 - strlen(button1) - strlen(button2) - 4; i++)
-        lcd.print(" ");        
-    
-    if (button2)
-    {
-        lcd.print("[");
-        lcd.print(button2);
-        lcd.print("]");
-    }
-	else
+	char buf[64];
+	int i = 0;
+	
+	if (message)
+		i = snprintf(buf, 64, "%16s\n", message);
+	
+	if (button1)
+		i += snprintf(&buf[i], 64 - i, "[%s]            ", button1);
+	
+	if (button2)
 	{
-		lcd.print("  ");
+		i += snprintf(&buf[i], 64 - i, "[%s]", button2);
 	}
+	print_message(buf);
 }
 
 void screen_info(const char *buffer, int delay)
@@ -142,8 +153,6 @@ void alarm3() { alarm_function(3); }
 void alarm4() { alarm_function(4); }
 
 alarmFunction alarm_func[ALARMS] = { &alarm0, &alarm1, &alarm2, &alarm3, &alarm4};
-
-
 
 
 void blink() //LED_WORK
@@ -349,25 +358,25 @@ void setup()
 	load_time(buf__, BUF_LEN);
 	screen_info(buf__, 1000);
 	
-	load_settings();
-	
 	//debug ---> !!!
 	/*
 	settings.alarm_enable[0] = true;
 	settings.alarm_type[0] = POLIV_TYPE;
-	settings.alarm_hour[0] = 18;
-	settings.alarm_min[0] = 55;
+	settings.alarm_hour[0] = 20;
+	settings.alarm_min[0] = 19;
 	settings.alarm_duration[0] = 10;
 	
 	settings.alarm_enable[1] = true;
 	settings.alarm_type[1] = RELAY1_TYPE;
-	settings.alarm_hour[1] = 18;
-	settings.alarm_min[1] = 16;
+	settings.alarm_hour[1] = 20;
+	settings.alarm_min[1] = 20;
 	settings.alarm_duration[1] = 10;
 	
-	set_time();
-	setup_alarms();*/
+	write_settings();*/
 	//< --- debug !!!
+	
+	load_settings();
+	
 	
 	setSyncProvider(&sync_time);
     setSyncInterval(60); 
