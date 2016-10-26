@@ -15,7 +15,7 @@ void get_time_str(char *buf, const int len)
 	}
 }
 
-void setup_internal_time()
+void set_internal_time()
 {
 	tmElements_t tm;
 	if (RTC.read(tm)) 

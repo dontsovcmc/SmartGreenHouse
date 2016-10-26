@@ -20,31 +20,31 @@ char relay1_alarm_id = -1;
 #define BUTTON_1 4   
 #define BUTTON_2 5   
 
-#define OPEN_PIN 6   //Открытие крана
-#define CLOSE_PIN 7  //Закрытие крана
-
 #define RELAY1_PIN 8 //Реле 1
 #define RELAY2_PIN 9 //Реле 2
+
+#define OPEN_PIN 6   //Открытие крана
+#define CLOSE_PIN 7  //Закрытие крана
 
 #define OPEN_TIME_MSEC 1000  //Время нужное для открытия/закрытия крана
 #define LED_KRAN  3      //Горит - движется кран
 #define BUTTON_START BUTTON_1   //Начать полив (открыть на N сек), закрыть кран
+
+Kran kran(OPEN_PIN, CLOSE_PIN, LED_KRAN, OPEN_TIME_MSEC);
 
 #define LED_WORK  2      //Моргает - отдых, горит - полив
 
 #define BLINK_DELAY   2000   //Период моргания
 #define BLINK_TIME    100   //Период моргания
 
-
+char buf__[32];
 unsigned long blink_time = 0;
 bool blink_on = false;
 
-Kran kran(OPEN_PIN, CLOSE_PIN, LED_KRAN, OPEN_TIME_MSEC);
 
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I2C address
 menuLCD menu_lcd(lcd,16,2);//menu output device
 
-tmElements_t tm;
 
 //a keyboard with only one key :D, this is the encoder button
 keyMap encBtn_map[]={{BUTTON_1,menu::upCode}, {BUTTON_2,menu::enterCode}};//negative pin numbers means we have a pull-up, this is on when low
@@ -166,15 +166,13 @@ void setup_settings()
 	char ver = load_settings();
 	if (ver > 0)
 	{
-		char ver_str[] = "SETT. LOADED   ";
-		itoa(ver,&ver_str[13],10); //(integer, yourBuffer, base
-		screen_info(ver_str, 1500);
+		sprintf (buf__, "SETT. LOADED %d", ver);
+		screen_info(buf__, 1500);
 	}
 	else
 	{
 		screen_info("SETT. ERROR", 1500);
 	}
-	lcd.clear();
 }
 
 
@@ -184,6 +182,8 @@ void load_time()
 	bool config = false;
 	if (!RTC.isRunning()) 
 	{
+		tmElements_t tm;
+		
 		if (getDate(&tm, __DATE__) && getTime(&tm, __TIME__)) 
 		{
 			parse = true;
@@ -202,15 +202,15 @@ void load_time()
 	}
 	else
 	{
-		char buffer[32];
-		get_time_str(&buffer[0], 16);
-		screen_info(buffer, 1500);
+		get_time_str(&buf__[0], 16);
+		screen_info(buf__, 1500);
 	}
 }
 
 
 void setup_alarms()
 {
+	
 	if (settings.poliv_enable)
 	{
 		if (poliv_alarm_id == -1)
@@ -218,9 +218,8 @@ void setup_alarms()
 		else
 			Alarm.write(poliv_alarm_id, AlarmHMS(settings.poliv_run_hour, settings.poliv_run_min, 0));
 		
-		char buf[16];
-		sprintf (buf, "POLIV: %02d:%02d", settings.poliv_run_hour, settings.poliv_run_min);
-		screen_info(buf, 1500);
+		sprintf (buf__, "POLIV: %02d:%02d", settings.poliv_run_hour, settings.poliv_run_min);
+		screen_info(buf__, 1500);
 	}
 	if (settings.fan_enable)
 	{
@@ -229,33 +228,29 @@ void setup_alarms()
 		else
 			Alarm.write(relay1_alarm_id, AlarmHMS(settings.fan_run_hour, settings.fan_run_min, 0));
 		
-		char buf[16];
-		sprintf (buf, "RELAY1: %02d:%02d", settings.fan_run_hour, settings.fan_run_min);
-		screen_info(buf, 1500);
+		sprintf (buf__, "RELAY1: %02d:%02d", settings.fan_run_hour, settings.fan_run_min);
+		screen_info(buf__, 1500);
 	}
 }
 	
 
 bool start_screen()
 {
-	char buffer[32];
-	
 	poll_menu = false;
-    update_duration();
 	
 	if (second() / 2 % 2)
 	{
-		get_time_str(&buffer[0], 16);	
+		get_time_str(&buf__[0], 16);	
 	}
 	else
 	{
-		float t = 1.1;
+		float t = -1.1;
 		char t_s[6];
 		dtostrf(t, 4, 1, t_s);
-		sprintf (&buffer[0], "T = %s C          ");
+		sprintf (&buf__[0], "T=%sC           ", t_s);
 	}
 	
-	print_screen(buffer, "POLIV", "MENU");
+	print_screen(buf__, "POLIV", "MENU");
     
 	logln("start_screen");
 	
@@ -267,6 +262,7 @@ bool reset_settings()
 	init_settings();
 	save_settings();
 	
+    update_duration();
 	setup_alarms();
 	return false;
 }
@@ -274,8 +270,9 @@ bool reset_settings()
 bool close_settings_menu()
 {
 	save_settings();
-	
 	screen_info("Settings saved", 1500);
+	set_internal_time();
+    update_duration();
 	
 	start_screen();
 }
@@ -337,13 +334,23 @@ void setup()
 	digitalWrite(RELAY2_PIN,LOW);
 	
 	lcd.begin(16,2);  
-	Serial.begin(9600) ;
+	Serial.begin(9600);
 
 	setup_settings();
 	
+	settings.poliv_enable = true;
+	settings.poliv_run_hour = 12;
+	settings.poliv_run_min = 13;
+	settings.poliv_duration = 10;
+	
+	settings.fan_enable = true;
+	settings.fan_run_hour = 12;
+	settings.fan_run_min = 14;
+	settings.fan_duration = 5;
+	
 	load_time();
 	
-	setup_internal_time();
+	set_internal_time();
 	
 	setup_alarms();
 	
@@ -378,14 +385,10 @@ void loop()
     {
         if (kran.opened())
         {
-            int left = 	kran.poliv_left_sec();
-            char buffer[] = "POLIV:         ";
-            
-            itoa(left,&buffer[7],10); //(integer, yourBuffer, base)
-			
-            print_screen(buffer, "STOP", nullptr);
-               
-            log(buffer);
+            int sec = 	kran.poliv_left_sec();
+			sprintf (&buf__[0], "POLIV: %d         ", sec);
+            print_screen(buf__, "STOP", nullptr);
+            log(buf__);
         }
         else
         {

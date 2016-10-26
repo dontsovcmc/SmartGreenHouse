@@ -20,15 +20,17 @@ char relay1_alarm_id = -1;
 #define BUTTON_1 4   
 #define BUTTON_2 5   
 
-#define OPEN_PIN 6   //Открытие крана
-#define CLOSE_PIN 7  //Закрытие крана
-
 #define RELAY1_PIN 8 //Реле 1
 #define RELAY2_PIN 9 //Реле 2
+
+#define OPEN_PIN 6   //Открытие крана
+#define CLOSE_PIN 7  //Закрытие крана
 
 #define OPEN_TIME_MSEC 1000  //Время нужное для открытия/закрытия крана
 #define LED_KRAN  3      //Горит - движется кран
 #define BUTTON_START BUTTON_1   //Начать полив (открыть на N сек), закрыть кран
+
+Kran kran(OPEN_PIN, CLOSE_PIN, LED_KRAN, OPEN_TIME_MSEC);
 
 #define LED_WORK  2      //Моргает - отдых, горит - полив
 
@@ -39,12 +41,10 @@ char relay1_alarm_id = -1;
 unsigned long blink_time = 0;
 bool blink_on = false;
 
-Kran kran(OPEN_PIN, CLOSE_PIN, LED_KRAN, OPEN_TIME_MSEC);
 
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I2C address
 menuLCD menu_lcd(lcd,16,2);//menu output device
 
-tmElements_t tm;
 
 //a keyboard with only one key :D, this is the encoder button
 keyMap encBtn_map[]={{BUTTON_1,menu::upCode}, {BUTTON_2,menu::enterCode}};//negative pin numbers means we have a pull-up, this is on when low
@@ -184,6 +184,8 @@ void load_time()
 	bool config = false;
 	if (!RTC.isRunning()) 
 	{
+		tmElements_t tm;
+		
 		if (getDate(&tm, __DATE__) && getTime(&tm, __TIME__)) 
 		{
 			parse = true;
@@ -211,6 +213,7 @@ void load_time()
 
 void setup_alarms()
 {
+	
 	if (settings.poliv_enable)
 	{
 		if (poliv_alarm_id == -1)
@@ -252,7 +255,7 @@ bool start_screen()
 		float t = 1.1;
 		char t_s[6];
 		dtostrf(t, 4, 1, t_s);
-		sprintf (&buffer[0], "T = %s C          ");
+		sprintf (&buffer[0], "T = %s C          ", t_s);
 	}
 	
 	print_screen(buffer, "POLIV", "MENU");
@@ -274,9 +277,9 @@ bool reset_settings()
 bool close_settings_menu()
 {
 	save_settings();
-	
 	screen_info("Settings saved", 1500);
-	
+
+	setup_internal_time();
 	start_screen();
 }
 
@@ -341,9 +344,18 @@ void setup()
 
 	setup_settings();
 	
-	load_time();
 	
-	setup_internal_time();
+	settings.poliv_enable = true;
+	settings.poliv_run_hour = 18;
+	settings.poliv_run_min = 26;
+	settings.poliv_duration = 10;
+	
+	settings.fan_enable = true;
+	settings.fan_run_hour = 18;
+	settings.fan_run_min = 27;
+	settings.fan_duration = 5;
+	
+	load_time();
 	
 	setup_alarms();
 	
