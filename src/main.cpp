@@ -3,8 +3,8 @@
 #include "kran.h"
 #include "wire.h"
 #include <LiquidCrystal_I2C.h>
-#include <menu.h>//menu macros and objects
-#include <menuLCDs.h>//F. Malpartida LCD's
+#include <menu.h>
+#include <menuLCDs.h>
 #include <menuFields.h>
 #include <keySafeStream.h>
 #include <chainStream.h>// concatenate multiple input streams (this allows adding a button to the encoder)
@@ -41,18 +41,15 @@ char buf__[32];
 unsigned long blink_time = 0;
 bool blink_on = false;
 
-
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I2C address
-menuLCD menu_lcd(lcd,16,2);//menu output device
-
-
-//a keyboard with only one key :D, this is the encoder button
+// Menu data
+menuLCD menu_lcd(lcd,16,2);
 keyMap encBtn_map[]={{BUTTON_1,menu::upCode}, {BUTTON_2,menu::enterCode}};//negative pin numbers means we have a pull-up, this is on when low
 keySafeLook<2> encButton(encBtn_map);
 Stream* in3[]={&encButton,&Serial};
 chainStream<2> allIn(in3);
-
 bool poll_menu = false;
+
 bool relay1 = false;
 
 void log(const char *str) { Serial.print(str); }
@@ -72,13 +69,10 @@ void turn_kran()
     {
        lcd.setCursor(0,0); 
        lcd.print("start");
+	   
+	   kran.set_duration(settings.poliv_duration*1000);
        kran.start_work();
     }
-}
-
-void update_duration()
-{
-   kran.set_duration(settings.poliv_duration*1000);
 }
 
 void turn_off_fan()
@@ -152,6 +146,10 @@ void print_screen(const char *message, const char *button1, const char *button2)
         lcd.print(button2);
         lcd.print("]");
     }
+	else
+	{
+		lcd.print("  ");
+	}
 }
 
 void screen_info(const char *buffer, int delay)
@@ -161,20 +159,48 @@ void screen_info(const char *buffer, int delay)
 	lcd.clear();		
 }
 
-void setup_settings()
+
+void setup_alarms()
 {
-	char ver = load_settings();
-	if (ver > 0)
+	
+	if (settings.poliv_enable)
 	{
-		sprintf (buf__, "SETT. LOADED %d", ver);
-		screen_info(buf__, 1500);
+		if (poliv_alarm_id == -1)
+			poliv_alarm_id = Alarm.alarmRepeat(settings.poliv_run_hour, settings.poliv_run_min, 0, turn_kran);   // every day		
+		else
+			Alarm.write(poliv_alarm_id, AlarmHMS(settings.poliv_run_hour, settings.poliv_run_min, 0));
+		
+		sprintf (buf__, "POLIV: %02d:%02d", settings.poliv_run_hour, settings.poliv_run_min);
+		screen_info(buf__, 1000);
 	}
-	else
+	if (settings.fan_enable)
 	{
-		screen_info("SETT. ERROR", 1500);
+		if (relay1_alarm_id == -1)
+			relay1_alarm_id = Alarm.alarmRepeat(settings.fan_run_hour, settings.fan_run_min, 0, turn_on_fan); // every day	
+		else
+			Alarm.write(relay1_alarm_id, AlarmHMS(settings.fan_run_hour, settings.fan_run_min, 0));
+		
+		sprintf (buf__, "RELAY1: %02d:%02d", settings.fan_run_hour, settings.fan_run_min);
+		screen_info(buf__, 1000);
 	}
 }
 
+void load_settings()
+{
+	char ver = read_settings();
+	if (ver > 0)
+	{
+		sprintf (buf__, "SETT. LOADED %d", ver);
+		screen_info(buf__, 500);
+	}
+	else
+	{
+		screen_info("SETT. ERROR", 1000);
+	}
+
+	set_time();  ///??
+	setup_alarms();
+}
 
 void load_time()
 {
@@ -202,37 +228,13 @@ void load_time()
 	}
 	else
 	{
+		get_rtc_time_str(&buf__[0], 16);
+		screen_info(buf__, 1000);
 		get_time_str(&buf__[0], 16);
-		screen_info(buf__, 1500);
+		screen_info(buf__, 1000);
 	}
 }
 
-
-void setup_alarms()
-{
-	
-	if (settings.poliv_enable)
-	{
-		if (poliv_alarm_id == -1)
-			poliv_alarm_id = Alarm.alarmRepeat(settings.poliv_run_hour, settings.poliv_run_min, 0, turn_kran);   // every day		
-		else
-			Alarm.write(poliv_alarm_id, AlarmHMS(settings.poliv_run_hour, settings.poliv_run_min, 0));
-		
-		sprintf (buf__, "POLIV: %02d:%02d", settings.poliv_run_hour, settings.poliv_run_min);
-		screen_info(buf__, 1500);
-	}
-	if (settings.fan_enable)
-	{
-		if (relay1_alarm_id == -1)
-			relay1_alarm_id = Alarm.alarmRepeat(settings.fan_run_hour, settings.fan_run_min, 0, turn_on_fan); // every day	
-		else
-			Alarm.write(relay1_alarm_id, AlarmHMS(settings.fan_run_hour, settings.fan_run_min, 0));
-		
-		sprintf (buf__, "RELAY1: %02d:%02d", settings.fan_run_hour, settings.fan_run_min);
-		screen_info(buf__, 1500);
-	}
-}
-	
 
 bool start_screen()
 {
@@ -240,7 +242,7 @@ bool start_screen()
 	
 	if (second() / 2 % 2)
 	{
-		get_time_str(&buf__[0], 16);	
+		get_rtc_time_str(&buf__[0], 16);	
 	}
 	else
 	{
@@ -260,19 +262,15 @@ bool start_screen()
 bool reset_settings()
 {
 	init_settings();
-	save_settings();
-	
-    update_duration();
-	setup_alarms();
+	write_settings();
 	return false;
 }
 
 bool close_settings_menu()
 {
-	save_settings();
-	screen_info("Settings saved", 1500);
-	set_internal_time();
-    update_duration();
+	write_settings();
+	screen_info("Settings saved", 500);
+	load_settings();
 	
 	start_screen();
 }
@@ -314,11 +312,8 @@ MENU(mainMenu,"Main"
   , OP("Exit", close_settings_menu)
 );
 
-
-void setup()
+void pin_setup()
 {
-	kran.setup();
-
 	pinMode(LED_WORK, OUTPUT);
 	pinMode(BUTTON_1,INPUT);
 	pinMode(BUTTON_2,INPUT); 
@@ -332,27 +327,43 @@ void setup()
 	
 	digitalWrite(RELAY1_PIN,LOW);	
 	digitalWrite(RELAY2_PIN,LOW);
+}
+
+
+time_t get_t()
+{
+	screen_info("TIME SYNC", 1500);
+	return RTC.get();
+}
+
+void setup()
+{
+	kran.setup();
+	pin_setup();
 	
 	lcd.begin(16,2);  
 	Serial.begin(9600);
 
-	setup_settings();
+	load_time();
+	load_settings();
 	
+	//debug ---> !!!
 	settings.poliv_enable = true;
-	settings.poliv_run_hour = 12;
-	settings.poliv_run_min = 13;
+	settings.poliv_run_hour = 16;
+	settings.poliv_run_min = 6;
 	settings.poliv_duration = 10;
 	
 	settings.fan_enable = true;
-	settings.fan_run_hour = 12;
-	settings.fan_run_min = 14;
+	settings.fan_run_hour = 16;
+	settings.fan_run_min = 7;
 	settings.fan_duration = 5;
 	
-	load_time();
-	
-	set_internal_time();
-	
+	set_time();
 	setup_alarms();
+	//< --- debug !!!
+	
+	setSyncProvider(&get_t);
+    setSyncInterval(60); 
 	
 	start_screen();
 }
@@ -368,12 +379,11 @@ void loop()
 	}
 	else if (allIn.available()) 
 	{
-		//button1.tick();
         char ch = allIn.read();
 		if (ch == menu::enterCode) 
 		{
 			poll_menu = true;
-			mainMenu.sel = 0; //0 reset the menu index fornext call
+			mainMenu.sel = 0; //0 reset the menu index for next call
 			logln("open menu");
 		}
         else if (ch == menu::upCode) 

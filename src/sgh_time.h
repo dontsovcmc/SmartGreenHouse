@@ -7,15 +7,21 @@
 #include <TimeLib.h>
 #include <DS1307RTC.h>
 
-void get_time_str(char *buf, const int len)
+void get_rtc_time_str(char *buf, const int len)
 {
 	tmElements_t tm;
 	if (RTC.read(tm)) {
-		sprintf (buf, "%02d/%02d/%02d %02d:%02d", tmYearToCalendar(tm.Year), tm.Month, tm.Day, tm.Hour, tm.Minute);
+		//sprintf (buf, "%02d/%02d/%02d %02d:%02d", tmYearToCalendar(tm.Year), tm.Month, tm.Day, tm.Hour, tm.Minute);
+		sprintf (buf, "%02d:%02d:%02d", tm.Hour, tm.Minute, tm.Second);
 	}
 }
 
-void set_internal_time()
+void get_time_str(char *buf, const int len)
+{
+	sprintf (buf, "%02d:%02d:%02d", hour(), minute(), second());
+}
+
+void set_time()
 {
 	tmElements_t tm;
 	if (RTC.read(tm)) 

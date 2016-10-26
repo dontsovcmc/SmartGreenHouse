@@ -40,24 +40,24 @@ struct PolivSettings_2
 void init_settings()
 {
 	settings.poliv_enable = true;
-	settings.poliv_run_hour = 21;
-	settings.poliv_run_min = 53;
+	settings.poliv_run_hour = 0;
+	settings.poliv_run_min = 0;
 	settings.poliv_duration = 10;
 	
 	settings.fan_enable = true;
-	settings.fan_run_hour = 21;
-	settings.fan_run_min = 54;
+	settings.fan_run_hour = 0;
+	settings.fan_run_min = 0;
 	settings.fan_duration = 5;
 }
 
-bool save_settings()
+bool write_settings()
 {
 	eeprom_write_byte(0, SETTINGS_CURRENT);
 	eeprom_write_block((const void*)&settings, (void*)1, sizeof(settings));
 	return true;
 }
 
-int load_settings()
+int read_settings()
 {
 	char version;
 	version = eeprom_read_byte(0);
