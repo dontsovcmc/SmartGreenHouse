@@ -10,6 +10,9 @@
 #define SETTINGS_VER2 2
 #define SETTINGS_CURRENT SETTINGS_VER2
 
+#define POLIV_TYPE 0
+#define RELAY1_TYPE 1
+#define RELAY2_TYPE 2
 
 struct PolivSettings_1
 {
@@ -21,17 +24,14 @@ struct PolivSettings_1
 	//add new settings here
 } settings_1;
 
+#define ALARMS 5
 struct PolivSettings_2
 {
-	bool poliv_enable;
-	int poliv_run_hour;
-	int poliv_run_min;
-	int poliv_duration;
-	
-	bool fan_enable;
-	int fan_run_hour;
-	int fan_run_min;
-	int fan_duration;	
+	bool alarm_enable[ALARMS];
+	int  alarm_type[ALARMS];
+	int  alarm_hour[ALARMS];
+	int  alarm_min[ALARMS];
+	int  alarm_duration[ALARMS];
 	//add new settings here
 } settings;
 
@@ -39,15 +39,21 @@ struct PolivSettings_2
 
 void init_settings()
 {
-	settings.poliv_enable = true;
-	settings.poliv_run_hour = 0;
-	settings.poliv_run_min = 0;
-	settings.poliv_duration = 10;
+	settings.alarm_enable[0] = true;
+	settings.alarm_type[0] = POLIV_TYPE;
+	settings.alarm_hour[0] = 0;
+	settings.alarm_min[0] = 0;
+	settings.alarm_duration[0] = 10;
 	
-	settings.fan_enable = true;
-	settings.fan_run_hour = 0;
-	settings.fan_run_min = 0;
-	settings.fan_duration = 5;
+	settings.alarm_enable[1] = true;
+	settings.alarm_type[1] = RELAY1_TYPE;
+	settings.alarm_hour[1] = 0;
+	settings.alarm_min[1] = 0;
+	settings.alarm_duration[1] = 10;
+	
+	settings.alarm_enable[2] = false;
+	settings.alarm_enable[3] = false;
+	settings.alarm_enable[4] = false;
 }
 
 bool write_settings()
@@ -66,10 +72,11 @@ int read_settings()
 	if (version == SETTINGS_VER1)
 	{
 		eeprom_read_block((void*)&settings_1, (void*)1, sizeof(PolivSettings_1));	
-		settings.poliv_enable = settings_1.poliv_enable;
-		settings.poliv_run_hour = settings_1.poliv_run_hour;
-		settings.poliv_run_min = settings_1.poliv_run_min;
-		settings.poliv_duration = settings_1.poliv_duration;
+		settings.alarm_enable[0] = settings_1.poliv_enable;
+		settings.alarm_type[0] = POLIV_TYPE;
+		settings.alarm_hour[0] = settings_1.poliv_run_hour;
+		settings.alarm_min[0] = settings_1.poliv_run_min;
+		settings.alarm_duration[0] = settings_1.poliv_duration;
 		return 1;
 	}
 	else if (version == SETTINGS_VER2)

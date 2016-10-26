@@ -11,14 +11,14 @@ void get_rtc_time_str(char *buf, const int len)
 {
 	tmElements_t tm;
 	if (RTC.read(tm)) {
-		//sprintf (buf, "%02d/%02d/%02d %02d:%02d", tmYearToCalendar(tm.Year), tm.Month, tm.Day, tm.Hour, tm.Minute);
-		sprintf (buf, "%02d:%02d:%02d", tm.Hour, tm.Minute, tm.Second);
+		//snprintf (buf, len, "%02d/%02d/%02d %02d:%02d", tmYearToCalendar(tm.Year), tm.Month, tm.Day, tm.Hour, tm.Minute);
+		snprintf (buf, len, "%02d:%02d:%02d      ", tm.Hour, tm.Minute, tm.Second);
 	}
 }
 
 void get_time_str(char *buf, const int len)
 {
-	sprintf (buf, "%02d:%02d:%02d", hour(), minute(), second());
+	snprintf (buf, len, "%02d:%02d:%02d       ", hour(), minute(), second());
 }
 
 void set_time()
@@ -52,6 +52,35 @@ bool getDate(tmElements_t *tm, const char *str)
   tm->Month = monthIndex + 1;
   tm->Year = CalendarYrToTm(Year);
   return true;
+}
+
+void load_time(char *message, int buf_len)
+{
+	bool parse = false;
+	bool config = false;
+	if (!RTC.isRunning()) 
+	{
+		tmElements_t tm;
+		if (getDate(&tm, __DATE__) && getTime(&tm, __TIME__)) 
+		{
+			parse = true;
+			// and configure the RTC with this info
+			if (RTC.write(tm)) {
+				config = true;
+			}
+		}
+		
+		if (parse && config) 
+			strncpy(message, "DS1307 configured", buf_len);
+		else if (parse) 
+			strncpy(message, "DS1307 Error", buf_len);
+		else 
+			strncpy(message, "No PC time", buf_len);
+	}
+	else
+	{
+		get_rtc_time_str(&message[0], buf_len);
+	}
 }
 
 
