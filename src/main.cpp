@@ -221,6 +221,7 @@ bool reset_settings()
 {
 	init_settings();
 	write_settings();
+	screen_info("Settings\nreset OK", 500);
 	return false;
 }
 
@@ -231,6 +232,7 @@ bool close_settings_menu()
 	load_settings();
 	
 	start_screen();
+	return true;
 }
 
 promptFeedback quit() {
