@@ -41,51 +41,14 @@ extern "C" {
   typedef void (*alarmFunction)(void);
 }
 
-void print_message(char *buf)
-{
-	Serial.println(buf);
-	
-	char *line2 = strchr(buf, '\n');
-	if (line2) *line2 = '\0';
-	
-	lcd.setCursor(0, 0); 
-	lcd.print(buf);
-	for (unsigned int i = 0; i < 16 - strlen(buf); i++) 
-		lcd.print(" "); 
-	
-	if (line2) 
-	{ 
-		lcd.setCursor(0, 1);
-		lcd.print(++line2);
-		for (unsigned int i = 0; i < 16 - strlen(line2); i++) 
-			lcd.print(" "); 
-	}
-}
-
-void print_screen(const char *message, const char *button1, const char *button2)
-{
-	char buf[64];
-	int i = 0;
-	
-	if (message)
-		i = snprintf(buf, 64, "%16s\n", message);
-	
-	if (button1)
-		i += snprintf(&buf[i], 64 - i, "[%s]            ", button1);
-	
-	if (button2)
-	{
-		i += snprintf(&buf[i], 64 - i, "[%s]", button2);
-	}
-	print_message(buf);
-}
 
 void screen_info(const char *buffer, int delay)
 {
 	logln(buffer);
-	print_screen(buffer, nullptr, nullptr);
+	print_message(buffer);
+	
 	Alarm.delay(delay);
-	lcd.clear();		
+	lcd.clear();
 }
 
 void turn_kran(int seconds)
@@ -379,12 +342,12 @@ void setup()
 	
 	
 	setSyncProvider(&sync_time);
-    setSyncInterval(60); 
+    setSyncInterval(60*60*24); 
 	
 	start_screen();
 }
 
-// the loop routine runs over and over again forever:
+
 void loop() 
 {
 	kran.poll();
@@ -425,5 +388,5 @@ void loop()
 	}				
   
 	blink();
-	Alarm.delay(1);        // delay in between reads for stability
+	Alarm.delay(1); // delay in between reads for stability
 }
