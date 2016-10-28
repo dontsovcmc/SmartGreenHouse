@@ -1,3 +1,4 @@
+git clone git@github.com:dontsovcmc/ArduinoMultiDesktop.git ./lib/ArduinoMultiDesktop
 git clone https://github.com/neu-rah/ArduinoMenu.git ./lib/ArduinoMenu
 git clone https://github.com/mathertel/OneButton.git ./lib/OneButton
 git clone https://github.com/PaulStoffregen/DS1307RTC.git ./lib/DS1307RTC
