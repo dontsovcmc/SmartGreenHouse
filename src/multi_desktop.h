@@ -6,64 +6,108 @@ extern "C" {
   typedef void (*func)(void);
 }
 
+/**
+@brief Desktop class
+@param show_ - callback function when this Desktop is active
+@param cb    - callback functions for all N buttons. i function called when user press i button.
+*/
+template <int8_t N>  //keys
 class Desktop
 {
 public: 
-	Desktop(func show_, func button1_)
+	Desktop<N>(func show_, func cb[])
 		: show(show_)
-		, button1(button1_)
+		, buttons_callbacks(cb)
 		, next(0)
 	{ }
 	
-	Desktop *next;
+	/**
+    @brief callback function when this Desktop is active
+    */
 	func show;
-	func button1;
+	
+	/**
+    @brief link to next Desktop in MultiDesktop configuration
+    */
+	Desktop *next;
+	
+	/**
+    @brief callback functions for all N buttons. i function called when user press i button.
+    */
+	func *buttons_callbacks;
 private:
 };
 
+
+/**
+@brief MultiDesktop class
+You can change Desktops for show different info and call different 
+functions in each of them by pressing same buttons.
+
+@param N         - number of keys you want to use except 'next desktop' key.
+@param next_code - key code for go to next Desktop  
+@param codes     - N key codes you want to press
+*/
+template <int8_t N> 
 class MultiDesktop
 {
 public:
+	MultiDesktop<N>(int8_t next_code, int8_t codes[])
+		: current(0)
+		, first(0)
+		, key_codes(codes)
+		, next_desktop_code(next_code)
+	{}
 	
-	MultiDesktop(Desktop *main)
-		: current(main)
-		, first(main)
-	{
-		
-	}
-	
-	void add_desktop(Desktop *new_d)
+	/**
+	@brief add_desktop add new Desktop. Desktops are 1-direction looped list.
+	@param new_d     - link to new Desktop
+	*/
+	void add_desktop(Desktop<N> *new_d)
 	{
 		if (!first)
 		{
 			first = new_d;
+			current = new_d;
 		}
 		else
 		{
-			Desktop *d = first;
-			while (d->next) d = d->next;
+			Desktop<N> *d = first;
+            while (d->next && d->next != first) 
+				d = d->next;
 			
 			d->next = new_d;
 			new_d->next = first;
 		}
 	}
 	
-	void button_pressed(char ch)
+	/**
+	@brief call this function when user press button. call show() to redraw screen.
+	@param code     - button code
+	*/
+	void button_pressed(int8_t code)
 	{
-		if (ch == menu::enterCode)  //NEXT desktop
+		if (next_desktop_code == code)
 		{
 			if (current->next)
 				current = current->next;
 		}
-        else if (ch == menu::upCode) //BUTTON 1
+		else
 		{
-			if (current->button1)
-				current->button1();
+			for (int8_t i=0; i < N; i++)
+			{
+				if (key_codes[i] == code)
+				{
+					if (current->buttons_callbacks[i])
+						current->buttons_callbacks[i]();
+				}
+			}
 		}
-		
-		show();
 	}
 	
+	/**
+	@brief call show function of current desktop
+	*/
 	void show()
 	{
 		if (current->show)
@@ -71,9 +115,11 @@ public:
 	}
 	
 private:
-	Desktop *current;
+	Desktop<N> *current;
+	Desktop<N> *first;
 	
-	Desktop *first;
+	int8_t next_desktop_code;
+	int8_t *key_codes;
 };
 
 #endif
