@@ -6,7 +6,7 @@
 #include <menu.h>
 #include <menuLCDs.h>
 #include <menuFields.h>
-#include <keySafeStream.h>
+#include <keyStream.h>
 #include <chainStream.h>// concatenate multiple input streams (this allows adding a button to the encoder)
 
 #endif
