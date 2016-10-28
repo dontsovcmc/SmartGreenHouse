@@ -7,6 +7,7 @@
 
 #include <TimeAlarms.h>
 
+#define ONLY_UP_KEY
 #include <menu.h>
 #include <menuLCDs.h>
 #include <menuFields.h>
@@ -17,6 +18,8 @@
 #include "sgh_time.h"
 #include "sgh_lcd.h"
 #include "sgh_menu.h"
+
+#include "multidesktop.h"
 
 char alarms_id[ALARMS]; 
 
@@ -32,7 +35,6 @@ char buf__[BUF_LEN];  //for printf
 unsigned long blink_time = 0;
 bool blink_on = false;
 
-bool relay1 = false;
 bool poll_menu = false;
 
 void logln(const char *str) { Serial.println(str); }
@@ -51,19 +53,11 @@ void screen_info(const char *buffer, int delay)
 	lcd.clear();
 }
 
-void turn_kran(int seconds)
+void start_kran(int seconds)
 {
-    if (kran.opened())
-    {
-	   screen_info("POLIV STOPPED", 500);
-       kran.stop_work();
-    }
-    else
-    {
-	   screen_info("POLIV START", 500);
-	   kran.set_duration(seconds*1000);
-       kran.start_work();
-    }
+    screen_info("POLIV START", 500);
+    kran.set_duration(seconds*1000);
+    kran.start_work();
 }
 
 
@@ -98,7 +92,7 @@ void alarm_function(char id)
 	switch(settings.alarm_type[id])
 	{
 		case POLIV_TYPE:
-			turn_kran(settings.alarm_duration[id]);
+			start_kran(settings.alarm_duration[id]);
 		break;
 		case RELAY1_TYPE:
 			turn_on_relay1(settings.alarm_duration[id]);
@@ -149,7 +143,6 @@ void blink() //LED_WORK
 void start_menu()
 {
 	poll_menu = true;
-    logln("start_menu");
 }
 
 void setup_alarms()
@@ -191,31 +184,50 @@ void load_settings()
 }
 
 
-bool start_screen()
+void start_screen()
 {
-	poll_menu = false;
+ 	logln("start_screen");
 	
-	if (second() / 2 % 2)
+	if (kran.opened())
 	{
-		get_rtc_time_str(buf__, BUF_LEN);	
+		int sec = 	kran.poliv_left_sec();
+		sprintf (&buf__[0], "POLIV: %d         ", sec);
+		print_screen(buf__, "STOP", nullptr);
 	}
 	else
 	{
-		//float t = -1.1;
-		//char t_s[6];
-		//dtostrf(t, 4, 1, t_s);
-		//snprintf (&buf__[0], BUF_LEN, "T=%sC           ", t_s);
-		time_t next = Alarm.getNextTrigger();
-		time_t elapsed = next - now();
-		snprintf (buf__, BUF_LEN, "next: %02d:%02d:%02d", hour(elapsed), minute(elapsed), second(elapsed));
+		get_rtc_time_str(buf__, BUF_LEN);
+		print_screen(buf__, "POLIV", ">TIMER");
 	}
-	
-	print_screen(buf__, "POLIV", "MENU");
-    
-	logln("start_screen");
-	
-	return true;
 }
+
+void start_screen_action()
+{
+	if (kran.opened())
+	{
+		screen_info("POLIV STOPPED", 500);
+        kran.stop_work();
+	}
+	else
+	{
+		start_kran(POLIV_MANUAL_LONG);
+	}
+}
+
+
+void screen2()
+{
+	//float t = -1.1;
+	//char t_s[6];
+	//dtostrf(t, 4, 1, t_s);
+	//snprintf (&buf__[0], BUF_LEN, "T=%sC           ", t_s);
+	
+	digitalRead(RELAY1_PIN) ? print_screen("RELAY", "OFF", ">MENU") : print_screen("RELAY", "ON", ">MENU");
+}
+
+
+void toggle_relay1() { digitalWrite(RELAY1_PIN, !digitalRead(RELAY1_PIN)); }
+
 
 bool reset_settings()
 {
@@ -225,8 +237,19 @@ bool reset_settings()
 	return false;
 }
 
+void menu_screen()
+{
+	time_t next = Alarm.getNextTrigger();
+	time_t elapsed = next - now();
+	snprintf (buf__, BUF_LEN, "poliv: %02d:%02d:%02d", hour(elapsed), minute(elapsed), second(elapsed));
+	print_screen(buf__, "MENU", "> POLIV");
+}
+
+
 bool close_settings_menu()
 {
+	poll_menu = false;
+	
 	write_settings();
 	screen_info("Settings saved", 500);
 	load_settings();
@@ -286,6 +309,27 @@ MENU(mainMenu,"Main"
   , OP("Exit", close_settings_menu)
 );
 
+void open_menu()
+{
+	poll_menu = true;
+	mainMenu.sel = 0; //0 reset the menu index for next call
+	logln("open menu");
+}
+
+//Multi Desktop configuration
+#define BUTTONS 1
+int8_t codes[] = { menu::upCode };
+
+func desktop1cb[] = { &start_screen_action };
+func desktop2cb[] = { &toggle_relay1 };
+func desktop3cb[] = { &open_menu };
+
+MultiDesktop<BUTTONS> multi_desktop( menu::enterCode , codes);
+Desktop<BUTTONS> mainDesktop(&start_screen, desktop1cb); 
+Desktop<BUTTONS> secondDesktop(&screen2, desktop2cb);
+Desktop<BUTTONS> menuDesktop(&menu_screen, desktop3cb);
+
+
 void pin_setup()
 {
 	pinMode(LED_WORK, OUTPUT);
@@ -302,7 +346,6 @@ void pin_setup()
 	digitalWrite(RELAY1_PIN,LOW);	
 	digitalWrite(RELAY2_PIN,LOW);
 }
-
 
 time_t sync_time()
 {
@@ -342,53 +385,36 @@ void setup()
 	
 	load_settings();
 	
-	
 	setSyncProvider(&sync_time);
     setSyncInterval(60*60*24); 
 	
-	start_screen();
+	multi_desktop.add_desktop(&mainDesktop);
+	multi_desktop.add_desktop(&secondDesktop);
+	multi_desktop.add_desktop(&menuDesktop);
+	
+	multi_desktop.show();
 }
 
 
 void loop() 
 {
-	kran.poll();
 	if (poll_menu)
 	{
-        logln("poll menu");
 		mainMenu.poll(menu_lcd, allIn);
 	}
-	else if (allIn.available()) 
+	else 
 	{
-        char ch = allIn.read();
-		if (ch == menu::enterCode) 
+		if (allIn.available()) 
 		{
-			poll_menu = true;
-			mainMenu.sel = 0; //0 reset the menu index for next call
-			logln("open menu");
+			char ch = allIn.read();
+			multi_desktop.button_pressed(ch);
 		}
-        else if (ch == menu::upCode) 
-		{
-			turn_kran(POLIV_MANUAL_LONG);
-		}
-    }
-    else 
-    {
-        if (kran.opened())
-        {
-            int sec = 	kran.poliv_left_sec();
-			sprintf (&buf__[0], "POLIV: %d         ", sec);
-            print_screen(buf__, "STOP", nullptr);
-            logln(buf__);
-        }
-        else
-        {
-            logln("no buttons");
-            start_screen();
-        }
 		
-	}				
-  
+		multi_desktop.show(); 
+	}
+	
+	kran.poll();
 	blink();
 	Alarm.delay(1); // delay in between reads for stability
+	
 }
