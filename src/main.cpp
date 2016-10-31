@@ -154,13 +154,14 @@ void setup_alarms()
 			if (alarms_id[i] == -1)
 			{
 				alarms_id[i] = Alarm.alarmRepeat(settings.alarms[i].alarm_hour, settings.alarms[i].alarm_min, 0, alarm_func[i]);
+				snprintf (buf__, BUF_LEN, "TIMER %d: %02d:%02d", i+1, settings.alarms[i].alarm_hour, settings.alarms[i].alarm_min);
 			}
 			else
 			{
 				Alarm.write(alarms_id[i], AlarmHMS(settings.alarms[i].alarm_hour, settings.alarms[i].alarm_min, 0));
+				snprintf (buf__, BUF_LEN, "UPD %d: %02d:%02d", i+1, settings.alarms[i].alarm_hour, settings.alarms[i].alarm_min);
 			}
 			
-			snprintf (buf__, BUF_LEN, "TIMER %d: %02d:%02d", i+1, settings.alarms[i].alarm_hour, settings.alarms[i].alarm_min);
 			screen_info(buf__, 500);
 		}
 	}
@@ -296,14 +297,15 @@ MENU(mainMenu,"Main"
 );
 
 promptFeedback setCurAlarm() {
-  alarm_sett = settings.alarms[mainMenu.sel];
-  menuNode::activeNode = &alarm_menu;
-  return false;
+	alarm_menu.sel = 0;
+	alarm_sett = settings.alarms[mainMenu.sel];
+	menuNode::activeNode = &alarm_menu;
+	return false;
 }
 
 promptFeedback setAlarmSett() {
-  settings.alarms[mainMenu.sel] = alarm_sett;
-  return cancel();
+	settings.alarms[mainMenu.sel] = alarm_sett;
+	return cancel();
 }
 
 void open_menu()
@@ -361,6 +363,10 @@ void setup()
 	Serial.begin(9600);
 
 	load_time(buf__, BUF_LEN);
+	screen_info(buf__, 1000);
+	
+	
+	snprintf (buf__, BUF_LEN, "VERSION %s", SOFTWARE_VER);
 	screen_info(buf__, 1000);
 	
 	//debug ---> !!!
