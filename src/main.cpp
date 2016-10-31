@@ -89,16 +89,16 @@ void turn_on_relay2(int duration)
 
 void alarm_function(char id)
 {
-	switch(settings.alarm_type[id])
+	switch(settings.alarms[id].alarm_type)
 	{
 		case POLIV_TYPE:
-			start_kran(settings.alarm_duration[id]);
+			start_kran(settings.alarms[id].alarm_duration);
 		break;
 		case RELAY1_TYPE:
-			turn_on_relay1(settings.alarm_duration[id]);
+			turn_on_relay1(settings.alarms[id].alarm_duration);
 		break;
 		case RELAY2_TYPE:
-		    turn_on_relay2(settings.alarm_duration[id]);
+		    turn_on_relay2(settings.alarms[id].alarm_duration);
 		break;	
 	}
 }
@@ -149,18 +149,18 @@ void setup_alarms()
 {
 	for (int i=0; i < ALARMS; i++)
 	{
-		if (settings.alarm_enable[i])
+		if (settings.alarms[i].alarm_enable)
 		{
 			if (alarms_id[i] == -1)
 			{
-				alarms_id[i] = Alarm.alarmRepeat(settings.alarm_hour[i], settings.alarm_min[i], 0, alarm_func[i]);
+				alarms_id[i] = Alarm.alarmRepeat(settings.alarms[i].alarm_hour, settings.alarms[i].alarm_min, 0, alarm_func[i]);
 			}
 			else
 			{
-				Alarm.write(alarms_id[i], AlarmHMS(settings.alarm_hour[i], settings.alarm_min[i], 0));
+				Alarm.write(alarms_id[i], AlarmHMS(settings.alarms[i].alarm_hour, settings.alarms[i].alarm_min, 0));
 			}
 			
-			snprintf (buf__, BUF_LEN, "TIMER %d: %02d:%02d", i+1, settings.alarm_hour[i], settings.alarm_min[i]);
+			snprintf (buf__, BUF_LEN, "TIMER %d: %02d:%02d", i+1, settings.alarms[i].alarm_hour, settings.alarms[i].alarm_min);
 			screen_info(buf__, 500);
 		}
 	}
@@ -258,56 +258,53 @@ bool close_settings_menu()
 	return true;
 }
 
-promptFeedback quit() {
-  return true;
-}
+promptFeedback quit() { return true; }
+promptFeedback cancel() { return true; }
+promptFeedback setCurAlarm();
+promptFeedback setAlarmSett();
 
-TOGGLE(settings.alarm_enable[0],timer1_on_menu,"Work: ",
+alarm_settings alarm_sett;
+
+TOGGLE(alarm_sett.alarm_enable,alarm_on_menu,"Work: ",
   VALUE("YES",1),
   VALUE("NO",0)
 );
 
-TOGGLE(settings.alarm_type[0],timer1_type_menu,"Type: ",
+TOGGLE(alarm_sett.alarm_type,alarm_type_menu,"Type: ",
   VALUE("Poliv",POLIV_TYPE),
   VALUE("Relay 1",RELAY1_TYPE),
   VALUE("Relay 2",RELAY2_TYPE)
 );
 
-MENU(timer1_menu,"Timer 1"
-  , SUBMENU(timer1_on_menu)
-  , SUBMENU(timer1_type_menu)
-  , FIELD(settings.alarm_duration[0],"Dlit","sec", 1, 60, 5, 1)
-  , FIELD(settings.alarm_hour[0],"Start","hour", 0, 23, 1, 1)
-  , FIELD(settings.alarm_min[0],"Start","min", 0, 59, 10, 1)
-  , OP("Exit", quit)
-);
-
-TOGGLE(settings.alarm_enable[1],timer2_on_menu,"Work: ",
-  VALUE("YES",1),
-  VALUE("NO",0)
-);
-
-TOGGLE(settings.alarm_type[1],timer2_type_menu,"Type: ",
-  VALUE("Poliv",POLIV_TYPE),
-  VALUE("Relay 1",RELAY1_TYPE),
-  VALUE("Relay 2",RELAY2_TYPE)
-);
-
-MENU(timer2_menu,"Timer 2"
-  , SUBMENU(timer2_on_menu)
-  , SUBMENU(timer2_type_menu)
-  , FIELD(settings.alarm_duration[1],"Dlit","sec", 1, 60, 5, 1)
-  , FIELD(settings.alarm_hour[1],"Start","hour", 0, 23, 1, 1)
-  , FIELD(settings.alarm_min[1],"Start","min", 0, 59, 10, 1)
-  , OP("Exit", quit)
+MENU(alarm_menu,"Alarm def"
+  , SUBMENU(alarm_on_menu)
+  , SUBMENU(alarm_type_menu)
+  , FIELD(alarm_sett.alarm_duration,"Dlit","sec", 1, 60, 5, 1)
+  , FIELD(alarm_sett.alarm_hour,"Start","hour", 0, 23, 1, 1)
+  , FIELD(alarm_sett.alarm_min,"Start","min", 0, 59, 10, 1)
+  , OP("OK", setAlarmSett)
 );
 
 MENU(mainMenu,"Main"
-  , SUBMENU(timer1_menu)
-  , SUBMENU(timer2_menu)
+  , OP("Alarm 1",setCurAlarm)
+  , OP("Alarm 2",setCurAlarm)
+  , OP("Alarm 3",setCurAlarm)
+  , OP("Alarm 4",setCurAlarm)
+  , OP("Alarm 5",setCurAlarm)
   , OP("Reset", reset_settings)
   , OP("Exit", close_settings_menu)
 );
+
+promptFeedback setCurAlarm() {
+  alarm_sett = settings.alarms[mainMenu.sel];
+  menuNode::activeNode = &alarm_menu;
+  return false;
+}
+
+promptFeedback setAlarmSett() {
+  settings.alarms[mainMenu.sel] = alarm_sett;
+  return cancel();
+}
 
 void open_menu()
 {

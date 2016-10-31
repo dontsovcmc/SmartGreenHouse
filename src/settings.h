@@ -24,14 +24,19 @@ struct PolivSettings_1
 	//add new settings here
 } settings_1;
 
+struct alarm_settings
+{
+	bool alarm_enable;
+	int  alarm_type;
+	int  alarm_hour;
+	int  alarm_min;
+	int  alarm_duration;
+};
+
 #define ALARMS 5
 struct PolivSettings_2
 {
-	bool alarm_enable[ALARMS];
-	int  alarm_type[ALARMS];
-	int  alarm_hour[ALARMS];
-	int  alarm_min[ALARMS];
-	int  alarm_duration[ALARMS];
+	struct alarm_settings alarms[ALARMS];
 	//add new settings here
 } settings;
 
@@ -39,21 +44,21 @@ struct PolivSettings_2
 
 void init_settings()
 {
-	settings.alarm_enable[0] = true;
-	settings.alarm_type[0] = POLIV_TYPE;
-	settings.alarm_hour[0] = 0;
-	settings.alarm_min[0] = 0;
-	settings.alarm_duration[0] = 10;
+	settings.alarms[0].alarm_enable = true;
+	settings.alarms[0].alarm_type = POLIV_TYPE;
+	settings.alarms[0].alarm_hour = 0;
+	settings.alarms[0].alarm_min = 0;
+	settings.alarms[0].alarm_duration = 10;
 	
-	settings.alarm_enable[1] = true;
-	settings.alarm_type[1] = RELAY1_TYPE;
-	settings.alarm_hour[1] = 0;
-	settings.alarm_min[1] = 0;
-	settings.alarm_duration[1] = 10;
+	settings.alarms[1].alarm_enable = true;
+	settings.alarms[1].alarm_type = RELAY1_TYPE;
+	settings.alarms[1].alarm_hour = 0;
+	settings.alarms[1].alarm_min = 0;
+	settings.alarms[1].alarm_duration = 10;
 	
-	settings.alarm_enable[2] = false;
-	settings.alarm_enable[3] = false;
-	settings.alarm_enable[4] = false;
+	settings.alarms[2].alarm_enable = false;
+	settings.alarms[3].alarm_enable = false;
+	settings.alarms[4].alarm_enable = false;
 }
 
 bool write_settings()
@@ -72,11 +77,11 @@ int read_settings()
 	if (version == SETTINGS_VER1)
 	{
 		eeprom_read_block((void*)&settings_1, (void*)1, sizeof(PolivSettings_1));	
-		settings.alarm_enable[0] = settings_1.poliv_enable;
-		settings.alarm_type[0] = POLIV_TYPE;
-		settings.alarm_hour[0] = settings_1.poliv_run_hour;
-		settings.alarm_min[0] = settings_1.poliv_run_min;
-		settings.alarm_duration[0] = settings_1.poliv_duration;
+		settings.alarms[0].alarm_enable = settings_1.poliv_enable;
+		settings.alarms[0].alarm_type = POLIV_TYPE;
+		settings.alarms[0].alarm_hour = settings_1.poliv_run_hour;
+		settings.alarms[0].alarm_min = settings_1.poliv_run_min;
+		settings.alarms[0].alarm_duration = settings_1.poliv_duration;
 		return 1;
 	}
 	else if (version == SETTINGS_VER2)
