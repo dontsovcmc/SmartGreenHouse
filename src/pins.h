@@ -18,5 +18,3 @@
 #define BLINK_TIME    100   //Период моргания
 
 #define POLIV_MANUAL_LONG 5
-
-#define SOFTWARE_VER "1.1"
