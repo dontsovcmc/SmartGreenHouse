@@ -14,7 +14,7 @@
 
 #include "kran.h"
 
-#define SOFTWARE_VER "1.2"
+#define SOFTWARE_VER "1.3"
 
 #include "pins.h"
 #include "settings.h"
@@ -387,7 +387,7 @@ MENU(mainMenu,"Main"
 */
 promptFeedback before_alarm_submenu() {
     alarm_menu.sel = 0;
-    alarm_sett = settings.alarms[mainMenu.sel];
+    alarm_sett = settings.alarms[alarm_menu.sel];
     menuNode::activeNode = &alarm_menu;
     return false;
 }
@@ -396,7 +396,7 @@ promptFeedback before_alarm_submenu() {
 @brief exit_alarm_submenu exit from Alarm submenu to save alarm to settings
 */
 promptFeedback exit_alarm_submenu() {
-    settings.alarms[mainMenu.sel] = alarm_sett;
+    settings.alarms[alarm_menu.sel] = alarm_sett;
     return cancel();
 }
 
