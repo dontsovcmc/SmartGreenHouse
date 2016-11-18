@@ -3,12 +3,11 @@
 This device can do something by alarm sheduler.
 
 Current version features:
-a. control electric ball Valve (manual and alarm)
-b. turn on Relay (manual and alarm)
+a. show temperature
+b. electric ball Valve control (manual and alarm)
+c. turn on Relay (manual and alarm)
 
 Remember settings in EEPROM
-
-
 
 # Quick start
 
@@ -17,6 +16,20 @@ Remember settings in EEPROM
 3. run init.sh to download external libraries
 4. download NewLiquidCrystal library manual to ./library folder
 5. run run.sh to compile and upload sketch to arduino
+6. if #define LOGGING, you can see debug info reading COM port. run serial.sh
+
+## Electric ball Valve control
+
+Valve has 3 pins(GND, open, close) by default 12V.
+But the power of Arduino is 5V. I invert power by solder and got PWR, open, close. Now I can use Transistor to move it.
+Arduino pins open Transistors and got GND on open or close pin.
+
+Algorith:
+1. open pin turn on for 5 seconds (motor works).
+2. open pin turn off. Valve is open.
+3. enjoy
+4. closing pin turn on for 5 seconds (motor works).
+5. closing pin turn off. Valse is close.
 
 
 # Additional libraries
@@ -27,6 +40,8 @@ Remember settings in EEPROM
 2. OneWire - 1-wire device support
 3. Arduino-Temperature-Control-Library - Dallas DS18B20 temperature sensor driver
 4. DS1307RTC - real time clock driver
+
++ read/write EEPROM
 
 ## Software
 

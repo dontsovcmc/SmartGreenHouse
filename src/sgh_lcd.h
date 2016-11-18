@@ -1,4 +1,3 @@
-
 #ifndef SGH_MENU_H
 #define SGH_MENU_H
 

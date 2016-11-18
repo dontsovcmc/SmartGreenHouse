@@ -1,11 +1,15 @@
 
 #include "sgh_lcd.h"
 
+#include "pins.h"  //for LOG
+
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
 
 
 void print_message(const char *buf, bool clean )
 {
+	LOG(buf);
+	
 	char *line2 = strchr(buf, '\n');
 	if (line2) *line2 = '\0';
 	

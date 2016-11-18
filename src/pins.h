@@ -20,3 +20,11 @@
 #define POLIV_MANUAL_LONG 5
 
 #define ONE_WIRE_BUS 10
+
+#define LOGGING  // uncomment to turn on Serial monitor
+
+#ifdef LOGGING
+#define LOG(str) Serial.println(str);
+#else
+#define LOG(str) (str)
+#endif

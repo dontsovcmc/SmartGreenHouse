@@ -2,6 +2,7 @@
 #include "stdlib.h"
 
 #define ONLY_UP_KEY
+
 #include <menu.h>
 #include <menuLCDs.h>
 #include <menuFields.h>
@@ -17,13 +18,14 @@
 
 #include "kran.h"
 
-#define SOFTWARE_VER "1.5"
+#define SOFTWARE_VER "1.6"
 
 #include "pins.h"
 #include "settings.h"
 #include "sgh_time.h"
 #include "sgh_lcd.h"
 #include "sgh_menu.h"
+
 
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
@@ -45,7 +47,6 @@ bool blink_on = false;
 time_t relay1_start_point = 0;
 bool poll_menu = false;
 
-void logln(const char *str) { Serial.println(str); }
 
 extern "C" {
   typedef void (*alarmFunction)(void);
@@ -58,7 +59,6 @@ extern "C" {
 */
 void screen_info(const char *buffer, int delay)
 {
-    logln(buffer);
     print_message(buffer);
     
     Alarm.delay(delay);
@@ -75,26 +75,26 @@ void start_kran(int seconds)
 
 void turn_off_relay1()
 {
-    logln("relay1 OFF");
+    LOG("relay1 OFF");
     digitalWrite(RELAY1_PIN, LOW);    
 }
 
 void turn_off_relay2()
 {
-    logln("relay2 OFF");
+    LOG("relay2 OFF");
     digitalWrite(RELAY2_PIN, LOW);    
 }
 
 void turn_on_relay1(int duration)
 {
-    logln("relay1 ON");
+    LOG("relay1 ON");
     digitalWrite(RELAY1_PIN, HIGH);
     Alarm.timerOnce(duration, turn_off_relay1); 
 }
 
 void turn_on_relay2(int duration)
 {
-    logln("relay2 ON");
+    LOG("relay2 ON");
     digitalWrite(RELAY2_PIN, HIGH);
     Alarm.timerOnce(duration, turn_off_relay2); 
 }
@@ -176,12 +176,12 @@ void setup_alarms()
             if (alarms_id[i] == -1)
             {
                 alarms_id[i] = Alarm.alarmRepeat(settings.alarms[i].alarm_hour, settings.alarms[i].alarm_min, 0, alarm_func[i]);
-                snprintf (buf__, BUF_LEN, "TIMER %d: %02d:%02d", i+1, settings.alarms[i].alarm_hour, settings.alarms[i].alarm_min);
+                snprintf (buf__, BUF_LEN, "ALARM %d: %02d:%02d", i+1, settings.alarms[i].alarm_hour, settings.alarms[i].alarm_min);
             }
             else
             {
                 Alarm.write(alarms_id[i], AlarmHMS(settings.alarms[i].alarm_hour, settings.alarms[i].alarm_min, 0));
-                snprintf (buf__, BUF_LEN, "UPD %d: %02d:%02d", i+1, settings.alarms[i].alarm_hour, settings.alarms[i].alarm_min);
+                snprintf (buf__, BUF_LEN, "UPDATE %d: %02d:%02d", i+1, settings.alarms[i].alarm_hour, settings.alarms[i].alarm_min);
             }
             
             screen_info(buf__, 500);
@@ -220,8 +220,6 @@ void load_settings()
 */
 void main_screen()
 {
-    logln("main_screen");
-    
     if (kran.opened())
     {
         int sec =     kran.poliv_left_sec();
@@ -268,13 +266,22 @@ void start_screen_action()
 */
 void alarm_screen()
 {
-    time_t elapsed = Alarm.getNextTriggerById(alarms_id[show_alarm_index]) - now();
-    
-    const char *atypes[] = {"Poliv", "Rele1", "Rele2"};
-    
-    snprintf (buf__, BUF_LEN, "%d:%s-%02d:%02d:%02d", show_alarm_index, 
-        atypes[settings.alarms[show_alarm_index].alarm_type], 
-        hour(elapsed), minute(elapsed), second(elapsed));
+	while (!settings.alarms[show_alarm_index].alarm_enable && show_alarm_index < ALARMS)
+        show_alarm_index++;
+	if (show_alarm_index != ALARMS)
+	{
+		time_t elapsed = Alarm.getNextTriggerById(alarms_id[show_alarm_index]) - now();
+
+		const char *atypes[] = {"Poliv", "Rele1", "Rele2"};
+
+		snprintf (buf__, BUF_LEN, "%d:%s-%02d:%02d:%02d", show_alarm_index, 
+			atypes[settings.alarms[show_alarm_index].alarm_type], 
+			hour(elapsed), minute(elapsed), second(elapsed));
+	}
+	else
+	{
+		snprintf (buf__, BUF_LEN, "no alarms");
+	}	
     
     print_screen(buf__, ">>", ">menu");
 }
@@ -300,7 +307,7 @@ void relay_screen()
     {
         if (relay1_start_point > 0)
         {
-            time_t t = now() - relay1_start_point;
+            time_t t = now() - relay1_start_point + 1;
             snprintf (buf__, BUF_LEN, "Rele1: %02d:%02d:%02d", 
                 hour(t), minute(t), second(t));
         }
@@ -424,7 +431,7 @@ void menu_screen_action()
 {
     poll_menu = true;
     mainMenu.sel = 0; //0 reset the menu index for next call
-    logln("open menu");
+    LOG("open menu");
 }
 
 /* Multi Desktop configuration */
