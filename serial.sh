@@ -1,0 +1,1 @@
+platformio device monitor -p COM3 -b 9600

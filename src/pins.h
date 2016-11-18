@@ -18,3 +18,5 @@
 #define BLINK_TIME    100   //Период моргания
 
 #define POLIV_MANUAL_LONG 5
+
+#define ONE_WIRE_BUS 10

@@ -12,15 +12,21 @@
 
 #include <multidesktop.h>
 
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
 #include "kran.h"
 
-#define SOFTWARE_VER "1.4"
+#define SOFTWARE_VER "1.5"
 
 #include "pins.h"
 #include "settings.h"
 #include "sgh_time.h"
 #include "sgh_lcd.h"
 #include "sgh_menu.h"
+
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
 
 char alarms_id[ALARMS]; 
 uint8_t show_alarm_index;  //0 - ALARMS
@@ -224,16 +230,20 @@ void main_screen()
     }
     else
     {
-		float t = -12.1;
-		char time_s[16], t_s[16];
-		dtostrf(t, 4, 1, t_s);
+		sensors.requestTemperatures();
+		float t = sensors.getTempCByIndex(0);
 		
-		snprintf (buf__, BUF_LEN, "%sC", t_s);
+		char time_s[16], t_s[5];
+		dtostrf(t, 4, 1, t_s);
 		
         get_rtc_time_str(time_s, BUF_LEN);
 		
-		snprintf (buf__, BUF_LEN, "%s   %s", time_s, t_s);
-        print_screen(buf__, "POLIV", ">TIMER");
+		if (t > 0.0)
+			snprintf (buf__, BUF_LEN, "%s +%sC", time_s, t_s);  //manual print message and buttons
+		else
+			snprintf (buf__, BUF_LEN, "%s %sC", time_s, t_s);
+		
+        print_screen(buf__, "POLIV", ">rele");
     }
 }
 
@@ -266,7 +276,7 @@ void alarm_screen()
         atypes[settings.alarms[show_alarm_index].alarm_type], 
         hour(elapsed), minute(elapsed), second(elapsed));
     
-    print_screen(buf__, ">>", ">MENU");
+    print_screen(buf__, ">>", ">menu");
 }
 
 void alarm_screen_action()
@@ -299,12 +309,12 @@ void relay_screen()
             relay1_start_point = now();
         }
         
-        print_screen(buf__, "OFF", ">ALARMS");
+        print_screen(buf__, "OFF", ">alarms");
     }
     else
     {
         relay1_start_point = 0;
-        print_screen("Rele1", "ON", ">ALARMS");
+        print_screen("Rele1", "ON", ">alarms");
     }
 }
 
@@ -407,7 +417,7 @@ promptFeedback exit_alarm_submenu() {
 */
 void menu_screen()
 {
-    print_screen("show menu", "MENU", "> POLIV");
+    print_screen("show menu", "MENU", ">poliv");
 }
 
 void menu_screen_action()
@@ -438,10 +448,10 @@ void pin_setup()
 {
     pinMode(LED_WORK, OUTPUT);
     pinMode(BUTTON_1,INPUT);
-    pinMode(BUTTON_2,INPUT); 
+    pinMode(BUTTON_2,INPUT);	
     pinMode(RELAY1_PIN, OUTPUT); 
     pinMode(RELAY2_PIN, OUTPUT); 
-    
+	
     digitalWrite(LED_WORK, LOW);
     
     digitalWrite(BUTTON_1,LOW);
@@ -463,6 +473,7 @@ void setup()
     
     for (int i=0; i < ALARMS; i++, alarms_id[i] = -1) ;
     
+	sensors.begin();
     kran.setup();
     pin_setup();
     
