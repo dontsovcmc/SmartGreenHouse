@@ -1,6 +1,7 @@
 # SmartGreenHouse
 
 Board: Arduino UNO 
+
 Aim: do something by alarm scheduler
 
 Current version features:
