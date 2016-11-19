@@ -1,12 +1,12 @@
 # SmartGreenHouse
 
-This device can do something by alarm sheduler.
+Board: Arduino UNO 
+Aim: do something by alarm scheduler
 
 Current version features:
 a. show temperature
 b. electric ball Valve control (manual and alarm)
 c. turn on Relay (manual and alarm)
-
 Remember settings in EEPROM
 
 # Quick start
