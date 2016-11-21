@@ -8,7 +8,7 @@
 #define OPEN_PIN 6   //Открытие крана
 #define CLOSE_PIN 7  //Закрытие крана
 
-#define OPEN_TIME_MSEC 1000  //Время нужное для открытия/закрытия крана
+#define OPEN_TIME_MSEC 10000  //Время нужное для открытия/закрытия крана
 #define LED_KRAN  3      //Горит - движется кран
 #define BUTTON_START BUTTON_1   //Начать полив (открыть на N сек), закрыть кран
 

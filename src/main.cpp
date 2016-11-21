@@ -18,7 +18,7 @@
 
 #include "kran.h"
 
-#define SOFTWARE_VER "1.6"
+#define SOFTWARE_VER "1.7"
 
 #include "pins.h"
 #include "settings.h"

@@ -48,7 +48,7 @@ void init_settings()
 	settings.alarms[0].alarm_type = POLIV_TYPE;
 	settings.alarms[0].alarm_hour = 0;
 	settings.alarms[0].alarm_min = 0;
-	settings.alarms[0].alarm_duration = 10;
+	settings.alarms[0].alarm_duration = 60;
 	
 	settings.alarms[1].alarm_enable = true;
 	settings.alarms[1].alarm_type = RELAY1_TYPE;
